@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hybriddependcyanlysis.Mapper.FileMapper">
+
+
+    <insert id="insertFile">
+        insert into hybridanalysis.file (file_name, file_path, create_time, update_time, source_folder_id, unpack_path)
+            values (#{fileName}, #{filePath}, #{createTime}, #{updateTime}, #{sourceFolderId}, #{unpackPath})
+    </insert>
+    <select id="getFileBySourceFolderId" resultType="com.hybriddependcyanlysis.POJO.DAO.FileDAO">
+        select id, file_name, file_path, create_time, update_time, source_folder_id, unpack_path from hybridanalysis.file
+        where source_folder_id = #{sourceFolderId} and RIGHT(file_name, 5) = '.java'
+    </select>
+    <select id="getFileIdByName" resultType="java.lang.Integer">
+        select id from hybridanalysis.file
+        <where>
+            file_name like concat('%', #{name}, '%')
+        </where>
+    </select>
+</mapper>

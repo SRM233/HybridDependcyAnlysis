@@ -1,8 +1,8 @@
-package com.hybriddependcyanlysis.IngestModule.Controller;
+package com.hybriddependcyanlysis.Controller;
 
 import Common.Result;
 import com.hybriddependcyanlysis.POJO.DTO.UserFolderDTO;
-import com.hybriddependcyanlysis.IngestModule.Service.IngestService;
+import com.hybriddependcyanlysis.Service.IngestService;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

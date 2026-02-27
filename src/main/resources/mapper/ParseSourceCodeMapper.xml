@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hybriddependcyanlysis.Mapper.ParseSourceCodeMapper">
+
+    <insert id="insertJavaFilesError" >
+        insert into hybridanalysis.java_files_error (name, user_id, source_folder_id, create_time, update_time, output_id, path)
+        VALUES (#{name}, #{userId}, #{sourceFolderId}, #{createTime}, #{updateTime}, #{outputId}, #{path});
+    </insert>
+
+    <insert id="insertJavaFilesParseOutPut" useGeneratedKeys="true" keyProperty="id">
+        insert into hybridanalysis.java_files_parse_output(name, create_time, update_time, user_id, source_folder_id, path)
+        VALUES (#{name}, #{createTime}, #{updateTime}, #{userId}, #{sourceFolderId}, #{path})
+    </insert>
+
+
+    <insert id="insertJspParseOutput" useGeneratedKeys="true" keyProperty="id">
+        insert into hybridanalysis.jsp_parse_output (name, user_id, source_folder_id, create_time, update_time, path)
+        VALUES (#{name}, #{userId}, #{sourceFolderId}, #{createTime}, #{updateTime}, #{path})
+    </insert>
+    <insert id="insertJspParseError">
+        insert into hybridanalysis.jsp_parse_error(name, user_id, source_folder_id, create_time, update_time, jsp_parse_output_id, path)
+        VALUES (#{name}, #{userId}, #{sourceFolderId}, #{createTime}, #{updateTime}, #{JspParseOutPutId}, #{path})
+    </insert>
+    <insert id="insertWebXmlParseOutput">
+        insert into hybridanalysis.web_xml_parse_output (user_id, source_folder_id, name, path, create_time, update_time)
+        VALUES (#{userId}, #{sourceFolderId}, #{name}, #{path}, #{createTime}, #{updateTime})
+    </insert>
+    <insert id="insertPersistenceXmlParseOutput">
+        insert into hybridanalysis.persistence_xml_parse_output (user_id, source_folder_id, name, path, create_time, update_time)
+        values (#{userId}, #{sourceFolderId}, #{name}, #{path}, #{createTime}, #{updateTime})
+    </insert>
+    <insert id="insertEjbJarXmlParseOutput">
+        insert into hybridanalysis.ejb_jar_xml_parse_output (user_id, source_folder_id, name, path, create_time, update_time)
+        values (#{userId}, #{sourceFolderId}, #{name}, #{path}, #{createTime}, #{updateTime})
+    </insert>
+    <insert id="insertFacesConfigXmlParseOutput">
+        insert into hybridanalysis.faces_config_xml_parse_output (user_id, source_folder_id, name, path, create_time, update_time)
+        values (#{userId}, #{sourceFolderId}, #{name}, #{path}, #{createTime}, #{updateTime})
+    </insert>
+    <insert id="insertApplicationXmlParseOutput">
+        insert into hybridanalysis.application_xml_parse_output (user_id, source_folder_id, name, path, create_time, update_time)
+        values (#{userId}, #{sourceFolderId}, #{name}, #{path}, #{createTime}, #{updateTime})
+    </insert>
+    <insert id="insertJsfParseOutput">
+        insert into hybridanalysis.jsf_parse_output (user_id, source_folder_id, name, path, create_time, update_time)
+        values (#{userId}, #{sourceFolderId}, #{name}, #{path}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="updateJavaFilesParseOutput">
+        update hybridanalysis.java_files_parse_output set update_time =#{updateTime} where source_folder_id = #{sourceFolderId}
+    </update>
+    <update id="updateJavaFilesPError">
+        update hybridanalysis.java_files_error set update_time = #{updateTime} where source_folder_id = #{sourceFolderId}
+    </update>
+    <update id="updateJspParseOutput">
+        update hybridanalysis.jsp_parse_output set update_time = #{updateTime} where source_folder_id = #{sourceFolderId}
+    </update>
+    <update id="updateJspParseError">
+        update hybridanalysis.jsp_parse_error set update_time = #{updateTime} where source_folder_id = #{sourceFolderId}
+    </update>
+    <update id="updateWebXmlParseOutput">
+        update hybridanalysis.web_xml_parse_output set update_time = #{updateTime} where source_folder_id = #{sourceFolderId}
+    </update>
+    <update id="updatePersistenceXmlParseOutput">
+        update hybridanalysis.persistence_xml_parse_output set update_time = #{updateTime} where source_folder_id = #{sourceFolderId}
+    </update>
+    <update id="updateEjbJarXmlParseOutput">
+        update hybridanalysis.ejb_jar_xml_parse_output set update_time = #{updateTime} where source_folder_id = #{sourceFolderId}
+    </update>
+    <update id="updateFacesConfigXmlParseOutput">
+        update hybridanalysis.faces_config_xml_parse_output set update_time = #{updateTime} where source_folder_id = #{sourceFolderId}
+    </update>
+    <update id="updateApplicationXmlParseOutput">
+        update hybridanalysis.application_xml_parse_output set update_time = #{updateTime} where source_folder_id = #{sourceFolderId}
+    </update>
+    <update id="updateJsfParseOutput">
+        update hybridanalysis.jsf_parse_output set update_time = #{updateTime} where source_folder_id = #{sourceFolderId}
+    </update>
+    <select id="getOutPutBySourceFolderId" resultType="com.hybriddependcyanlysis.POJO.DAO.JavaFilesParseDAO">
+        select * from hybridanalysis.java_files_parse_output where source_folder_id = #{sourceFolderId}
+    </select>
+    <select id="getErrorBySourceFolderId" resultType="com.hybriddependcyanlysis.POJO.DAO.JavaFilesErrorDAO">
+        select * from hybridanalysis.java_files_error where source_folder_id = #{sourceFolderId}
+    </select>
+
+
+</mapper>

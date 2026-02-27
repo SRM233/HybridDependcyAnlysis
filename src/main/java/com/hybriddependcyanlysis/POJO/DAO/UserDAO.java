@@ -13,8 +13,7 @@ import java.util.List;
 public class UserDAO {
     private Integer id;
     private String userName;
-    private String passWord;
-    private List<Integer> fileIds;
+    private String password;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

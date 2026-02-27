@@ -2,11 +2,15 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.hybriddependcyanlysis.IngestModule.Mapper.IngestMapper">
+<mapper namespace="com.hybriddependcyanlysis.Mapper.IngestMapper">
 
 
     <insert id="insertSourceFolder" useGeneratedKeys="true" keyProperty="id">
-        insert into hybridanalysis.sources_folders(user_id, zip_name, zip_path, create_time, update_time)
-        VALUES (#{userId}, #{zipName}, #{zipPath}, #{createTime}, #{updateTime})
+        insert into hybridanalysis.source_folders(user_id, zip_name, zip_path, create_time, update_time, dir_path, unpack_path)
+        VALUES (#{userId}, #{zipName}, #{zipPath}, #{createTime}, #{updateTime}, #{dirPath}, #{unpackPath})
     </insert>
+    <select id="getById" resultType="com.hybriddependcyanlysis.POJO.DAO.SourceFolderDAO">
+        select id, user_id, zip_name, zip_path, create_time, update_time, dir_path, unpack_path from hybridanalysis.source_folders
+        where id = #{sourceFolderId}
+    </select>
 </mapper>

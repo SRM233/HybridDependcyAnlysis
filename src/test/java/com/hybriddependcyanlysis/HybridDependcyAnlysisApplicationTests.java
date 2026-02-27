@@ -7,7 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 class HybridDependcyAnlysisApplicationTests {
 
     @Test
-    void contextLoads() {
+    void Generate () {
     }
 
 }

@@ -13,7 +13,7 @@ import java.util.List;
 public class UserDTO {
     private Integer id;
     private String userName;
-    private String passWord;
+    private String password;
     private Integer sourceFolderId;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;

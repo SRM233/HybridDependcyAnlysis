@@ -9,4 +9,8 @@
         select dependency_type, count(*) AS calledNums from astschema.dependency_table
         where output_id = #{id} group by dependency_type
     </select>
+    <select id="getELexpression" resultType="java.util.HashMap">
+        select page_name as pageName, expression from client_side_schema.el_expression_table left join client_side_schema.page_table pt on pt.id = el_expression_table.page_id
+
+    </select>
 </mapper>

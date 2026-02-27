@@ -14,6 +14,8 @@ public class SourceFolderDAO {
     private Integer userId;
     private String zipName;
     private String zipPath;
+    private String dirPath;
+    private String unpackPath;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

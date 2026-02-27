@@ -1,13 +1,11 @@
 package com.hybriddependcyanlysis.Controller;
 
 import Common.Result;
+import com.hybriddependcyanlysis.POJO.DTO.UserDTO;
 import com.hybriddependcyanlysis.Service.AstService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 
@@ -30,6 +28,21 @@ public class AstController {
     @PostMapping("/mappingAst")
     public Result mapping(Integer userId, Integer sourceFolderId) throws IOException {
         astService.MappingOutPutFile(userId, sourceFolderId);
+        return Result.success();
+    }
+
+    @DeleteMapping("/deleteOutPutReport")
+    public Result deleteOutputReport(Integer userId, Integer sourceFolderId)
+    {
+        astService.deleteOutputReport(userId, sourceFolderId);
+        return Result.success();
+    }
+
+    @PostMapping("/mappingJsp")
+    public Result jspMapping(@RequestBody UserDTO userDTO)
+    {
+        log.info("userDTO:{}", userDTO);
+        astService.jspMapping(userDTO);
         return Result.success();
     }
 

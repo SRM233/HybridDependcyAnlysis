@@ -1,4 +1,4 @@
-package com.hybriddependcyanlysis.IngestModule.Service;
+package com.hybriddependcyanlysis.Service;
 
 
 import com.hybriddependcyanlysis.POJO.DTO.UserFolderDTO;

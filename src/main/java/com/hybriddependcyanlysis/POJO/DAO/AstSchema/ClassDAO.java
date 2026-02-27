@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 @Data
 public class ClassDAO {
     private Integer id;
-    private Integer file_id;
     private Integer outputId;
     private String className;
     private boolean isInterface;

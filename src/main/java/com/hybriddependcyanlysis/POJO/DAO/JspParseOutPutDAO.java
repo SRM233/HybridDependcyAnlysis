@@ -9,13 +9,13 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class AstErrorDAO {
+public class JspParseOutPutDAO {
     private Integer id;
-    private String name;
     private Integer userId;
     private Integer sourceFolderId;
-    private Integer outputId;
+    private String name;
     private String path;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+
 }

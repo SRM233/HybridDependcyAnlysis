@@ -1,9 +1,13 @@
 package com.hybriddependcyanlysis.Service.Impl;
 
+import Common.OutputPath;
+import Common.XmlFileInfo.XmlFileInfo;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hybriddependcyanlysis.Mapper.AstMapper;
 import com.hybriddependcyanlysis.Mapper.StaticAnalysisMapper;
-import com.hybriddependcyanlysis.POJO.DAO.AstOutPutDAO;
-import com.hybriddependcyanlysis.POJO.DAO.UserDAO;
+import com.hybriddependcyanlysis.POJO.DAO.JavaFilesParseDAO;
+import com.hybriddependcyanlysis.POJO.DAO.JspParseOutPutDAO;
 import com.hybriddependcyanlysis.POJO.DTO.UserDTO;
 import com.hybriddependcyanlysis.Service.StaticAnalysisService;
 import lombok.extern.slf4j.Slf4j;
@@ -11,9 +15,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -26,6 +34,13 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
     @Autowired
     private AstMapper astMapper;
 
+    private static final Set<String> TARGET_WEB_XML_SECTIONS = Set.of(
+            "contextParams", "filters", "servlets", "listeners",
+            "sessionConfig", "welcomeFiles", "taglibs",
+            "resourceRefs", "securityConstraints", "securityRoles",
+            "loginConfig", "errorPages", "mimeMappings"
+    );
+
     @Override
     @Transactional
     public HashMap<String, Integer> dependencyCounting(Integer userId, Integer sourceFolderId) {
@@ -34,9 +49,9 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         userDTO.setId(userId);
         userDTO.setSourceFolderId(sourceFolderId);
 
-        AstOutPutDAO astOutPutDAO = astMapper.getOutPut(userDTO);
+        JavaFilesParseDAO javaFilesParseDAO = astMapper.getOutPut(userDTO);
 
-        List<HashMap<String, Object>> resultList = staticAnalysisMapper.getDependencyCountGroupByType(astOutPutDAO);
+        List<HashMap<String, Object>> resultList = staticAnalysisMapper.getDependencyCountGroupByType(javaFilesParseDAO);
 
         HashMap<String, Integer> resultMap = new HashMap<>();
         for (Map<String, Object> row : resultList) {
@@ -46,6 +61,304 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         }
 
         return resultMap;
+    }
+
+    @Override
+    @Transactional
+    public HashMap<String, String> ELAnalysis(UserDTO userDTO) {
+        JspParseOutPutDAO jspParseOutPutDAO = astMapper.getJspParseOutput(userDTO);
+
+        List<HashMap<String, Object>> temp = staticAnalysisMapper.getELexpression(jspParseOutPutDAO);
+
+        log.info("EL Analysis");
+
+        HashMap<String, String> resultMap = new HashMap<>();
+        for (Map<String, Object> row : temp) {
+            String pageName = (String) row.get("pageName");
+            String expression = (String) row.get("expression"); // 确保 SQL 中别名是 calledNums
+            resultMap.put(pageName, expression);
+        }
+
+        return resultMap;
+
+    }
+
+    @Override
+    public void AnnotationCount(UserDTO userDTO) throws IOException {
+        // get java parse output path
+        ObjectMapper objectMapper = new ObjectMapper();   // 需要 import com.fasterxml.jackson.databind.ObjectMapper;
+        String outputPath = astMapper.getJavaFilesParseOutput(userDTO);
+
+        File jsonFile = new File(outputPath);
+
+        checkJsonFile(jsonFile);
+
+// 读取前几行或整个内容（小文件可以直接读）
+        String content = Files.readString(jsonFile.toPath()).trim();
+
+        if (content.isEmpty() || content.equals("[]") || content.equals("{}")) {
+            throw new RuntimeException("文件内容为空或空结构: " + outputPath);
+        }
+
+        // 直接读取为 List<Map<String, Object>>
+        List<Map<String, Object>> classes = objectMapper.readValue(jsonFile,
+                objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+
+        if(classes.isEmpty())
+        {
+            throw new RuntimeException("解析结果文件 is null: " + outputPath);
+        }
+
+//        System.out.println("✅ 成功读取 Java 解析结果！");
+//        System.out.println("总类数量: " + classes.size());
+//        System.out.println("第一个类示例: " + classes.get(0));
+
+        Set<String> targetAnnotations = Set.of(
+                "jakarta.ejb.Stateless", "jakarta.ejb.Stateful", "jakarta.ejb.Singleton",
+                "jakarta.ejb.MessageDriven", "jakarta.ejb.ApplicationException",
+                "jakarta.persistence.Entity", "jakarta.persistence.Table",
+                "jakarta.inject.Inject", "jakarta.annotation.Resource",
+                "jakarta.ejb.EJB", "jakarta.ejb.Remote", "jakarta.ejb.Local"
+        );
+
+        Map<String, Integer> countMap = new LinkedHashMap<>();
+        Map<String, List<String>> detailMap = new LinkedHashMap<>();
+
+        for (Map<String, Object> cls : classes) {
+            String fullName = (String) cls.get("fullName");
+            if (fullName == null) continue;
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> annos = (List<Map<String, Object>>) cls.getOrDefault("annotations", List.of());
+
+            for (Map<String, Object> ann : annos) {
+                String annoName = (String) ann.get("name");
+                if (annoName == null) continue;
+
+                if (targetAnnotations.contains(annoName)) {
+                    countMap.merge(annoName, 1, Integer::sum);
+                    detailMap.computeIfAbsent(annoName, k -> new ArrayList<>()).add(fullName);
+                }
+            }
+        }
+
+        // ====================== 输出结果 ======================
+//        System.out.println("\n🎉 Annotation 统计完成！共扫描 " + classes.size() + " 个类");
+//        countMap.forEach((anno, cnt) -> {
+//            System.out.printf("   %-45s : %d 个%n", anno, cnt);
+//        });
+
+        // ====================== 生成报告 JSON ======================
+        Path outputRoot = jsonFile.toPath().getParent();
+        File reportFile = outputRoot.resolve("annotation-statistics.json").toFile();
+
+        Map<String, Object> report = new LinkedHashMap<>();
+        report.put("totalClasses", classes.size());
+        report.put("annotationCount", countMap);
+        report.put("annotationDetails", detailMap);
+        report.put("analysisTime", LocalDateTime.now().toString());
+
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, report);
+
+//        System.out.println("\n📁 详细统计报告已保存 → " + reportFile.getAbsolutePath());
+
+    }
+
+    @Override
+    public void analyzeWebXml(UserDTO userDTO) throws IOException {
+        String outputPath = astMapper.getWebXmlParseOutput(userDTO);
+        File webXmlJsonFile = new File(outputPath);
+        checkJsonFile(webXmlJsonFile);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<XmlFileInfo> webDataList = objectMapper.readValue(webXmlJsonFile,
+                new TypeReference<List<XmlFileInfo>>() {});
+
+        if (webDataList.isEmpty()) {
+            System.err.println("⚠️ web.xml JSON 为空: " + outputPath);
+            return;
+        }
+
+        XmlFileInfo fileInfo = webDataList.get(0);
+        Map<String, Object> data = fileInfo.data;
+
+        Map<String, Object> analysis = new LinkedHashMap<>();
+        List<String> migrationSuggestions = new ArrayList<>();
+
+        // ====================== 1. 基础信息（新增） ======================
+        analysis.put("fileType", fileInfo.fileType);
+        analysis.put("filePath", fileInfo.filePath);
+        analysis.put("analyzedAt", LocalDateTime.now().toString());
+
+        // 版本 & metadata-complete（最重要！）
+        String version = (String) data.getOrDefault("version", "unknown");
+        boolean metadataComplete = Boolean.TRUE.equals(data.get("metadataComplete"));
+        analysis.put("webXmlVersion", version);
+        analysis.put("metadataComplete", data.get("metadataComplete"));
+
+        if (version.compareTo("3.0") < 0 && !version.equals("unknown")) {
+            migrationSuggestions.add("⚠️ web.xml 版本 " + version + "（Servlet 2.x/3.0 前），强烈建议升级到 Jakarta EE 9+（web.xml version=6.0 或使用注解完全取代）");
+        }
+        if (metadataComplete) {
+            migrationSuggestions.add("ℹ️ metadata-complete=true，注解扫描被禁用，建议改为 false 并使用 @WebServlet/@WebFilter/@WebListener");
+        }
+
+        // ====================== 2. TARGET_WEB_XML_SECTIONS 自动统计 ======================
+        for (String section : TARGET_WEB_XML_SECTIONS) {
+            Object val = data.get(section);
+            int count = 0;
+            if (val instanceof List) count = ((List<?>) val).size();
+            else if (val instanceof Map) count = ((Map<?, ?>) val).size();
+
+            analysis.put(section + "Count", count);
+        }
+
+        // ====================== 3. 核心配置深度分析 ======================
+
+        // Context Params（硬编码配置）
+        List<Map<String, Object>> contextParams = getList(data, "contextParams");
+        analysis.put("contextParams", contextParams);
+        if (!contextParams.isEmpty()) {
+            Set<String> sensitiveKeys = Set.of("jdbc.", "db.", "mail.", "redis.", "spring.", "contextConfigLocation");
+            boolean hasSensitive = contextParams.stream()
+                    .anyMatch(p -> sensitiveKeys.stream().anyMatch(s ->
+                            ((String) p.getOrDefault("name", "")).toLowerCase().contains(s)));
+            if (hasSensitive) {
+                migrationSuggestions.add("🚨 发现硬编码 context-param（含数据库/邮件等敏感配置），必须全部外置到 application.yml + Kubernetes ConfigMap/Secret");
+            }
+        }
+
+        // Servlets（检测框架）
+        List<Map<String, Object>> servlets = getList(data, "servlets");
+        boolean hasFacesServlet = servlets.stream()
+                .anyMatch(s -> ((String) s.getOrDefault("servletClass", "")).contains("FacesServlet"));
+        boolean hasSpringDispatcher = servlets.stream()
+                .anyMatch(s -> ((String) s.getOrDefault("servletClass", "")).contains("DispatcherServlet"));
+        if (hasFacesServlet) {
+            migrationSuggestions.add("🔄 检测到 FacesServlet（JSF），建议迁移到 Jakarta Faces 或转向 Spring Boot + Thymeleaf/React");
+        }
+        if (hasSpringDispatcher) {
+            migrationSuggestions.add("🌱 检测到 Spring MVC DispatcherServlet，推荐直接升级到 Spring Boot 3.x（内嵌 Tomcat + 零 XML）");
+        }
+
+        // Filters / Listeners
+        List<Map<String, Object>> filters = getList(data, "filters");
+        List<String> listeners = getListString(data, "listeners");
+        analysis.put("filters", filters);
+        analysis.put("listeners", listeners);
+
+        // Session Config（已解析为 Map）
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sessionConfig = (Map<String, Object>) data.getOrDefault("sessionConfig", Map.of());
+        analysis.put("sessionConfig", sessionConfig);
+        String timeout = (String) sessionConfig.getOrDefault("sessionTimeoutMinutes", "30");
+        if (Integer.parseInt(timeout) > 30) {
+            migrationSuggestions.add("♻️ session-timeout = " + timeout + " 分钟 → 云上必须使用 Redis / Hazelcast / Spring Session 分布式 Session");
+        }
+
+        // Login Config（认证方式）
+        @SuppressWarnings("unchecked")
+        Map<String, Object> loginConfig = (Map<String, Object>) data.getOrDefault("loginConfig", Map.of());
+        String authMethod = (String) loginConfig.getOrDefault("authMethod", "");
+        if (!authMethod.isEmpty()) {
+            migrationSuggestions.add("🔐 检测到 " + authMethod + " 认证（FORM/BASIC），建议迁移到 OAuth2 / OpenID Connect + Keycloak / Auth0");
+        }
+
+        // Taglib / Welcome Files（老技术）
+        List<Map<String, Object>> taglibs = getList(data, "taglibs");
+        List<String> welcomeFiles = getListString(data, "welcomeFiles");
+        if (!taglibs.isEmpty()) {
+            migrationSuggestions.add("📚 发现 " + taglibs.size() + " 个 <taglib>，老式 JSP 标签库，建议替换为 JSTL 或完全转向 Facelets/Thymeleaf");
+        }
+
+        // Resource Refs（JNDI）
+        List<Map<String, Object>> resourceRefs = getList(data, "resourceRefs");
+        if (!resourceRefs.isEmpty()) {
+            migrationSuggestions.add("☁️ 发现 " + resourceRefs.size() + " 个 <resource-ref>（JNDI），全部改为 @Value + Kubernetes Secret / AWS Secrets Manager");
+            analysis.put("resourceRefDetails", resourceRefs);
+        }
+
+        // Security & Error Pages（保留你原来的优秀逻辑）
+        List<Map<String, Object>> securityConstraints = getList(data, "securityConstraints");
+        List<String> securityRoles = getListString(data, "securityRoles");
+        List<Map<String, Object>> errorPages = getList(data, "errorPages");
+
+        if (!securityConstraints.isEmpty()) {
+            migrationSuggestions.add("🔐 发现 " + securityConstraints.size() + " 个 security-constraint，建议迁移到 Spring Security 6 / Keycloak + Istio");
+        }
+        boolean hasExceptionPages = errorPages.stream().anyMatch(ep -> "exception".equals(ep.get("type")));
+        if (hasExceptionPages) {
+            migrationSuggestions.add("📄 自定义 exception-page 建议统一用 @ControllerAdvice + GlobalExceptionHandler");
+        }
+
+        // ====================== 4. 最终汇总 ======================
+        analysis.put("migrationSuggestions", migrationSuggestions);
+        analysis.put("totalSuggestions", migrationSuggestions.size());
+//        analysis.put("modernizationScore", calculateScore(migrationSuggestions.size(), version)); // 升级版评分
+
+        // 保存到数据库（建议）
+        // astMapper.saveWebXmlAnalysis(userDTO.getId(), analysis);
+
+        // ====================== 输出 ======================
+        System.out.println("✅ web.xml 分析完成！文件: " + fileInfo.filePath);
+        System.out.println("   版本: " + version + " | Servlets: " + servlets.size() + " | Filters: " + filters.size());
+        System.out.println("   迁移建议: " + migrationSuggestions.size() + " 条 | 现代化评分: " + analysis.get("modernizationScore") + "/100");
+    }
+    private boolean checkFile(File outputPath)
+    {
+        return outputPath.exists();
+    }
+
+
+    private void checkJsonFile(File file)
+    {
+        if (!checkFile(file)) {
+            throw new RuntimeException("解析结果文件不存在: " + file);
+        }
+
+        if (!file.exists()) {
+            throw new RuntimeException("文件不存在: " + file);
+        }
+
+        if (file.length() == 0) {
+            throw new RuntimeException("文件为空（0字节）: " + file);
+        }
+    }
+
+
+    // 通用获取 List<Map>
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> getList(Map<String, Object> map, String key) {
+        Object val = map.get(key);
+        return (val instanceof List) ? (List<Map<String, Object>>) val : List.of();
+    }
+
+    // 专用获取 List<String>（securityRoles）
+    @SuppressWarnings("unchecked")
+    private List<String> getListString(Map<String, Object> map, String key) {
+        Object val = map.get(key);
+        return (val instanceof List) ? (List<String>) val : List.of();
+    }
+
+    // 简单打分示例（你可以扩展成更复杂的规则）
+    private int calculateScore(int suggestionCount, String version) {
+        return Math.max(100 - suggestionCount * 8, 30); // 建议越多，分数越低，代表越需要现代化
+    }
+
+    //TODO 整合在一个Common Class 里为静态方法
+    private Path checkOutputFile(String path) throws IOException {
+        Path projectRoot = Paths.get(path).normalize();   // 需要 import java.nio.file.Paths;
+        Path outputRoot = projectRoot.resolve(OutputPath.OUTPUT_BASE_DIR);
+
+        if (!Files.exists(outputRoot)) {
+            try {
+                Files.createDirectories(outputRoot);
+                System.out.println("Created output directory: " + outputRoot);
+            } catch (IOException e) {
+                throw new IOException("Failed to create output directory: " + outputRoot, e);
+            }
+        }
+        return outputRoot;
     }
 
 }

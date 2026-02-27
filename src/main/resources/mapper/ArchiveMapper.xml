@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hybriddependcyanlysis.Mapper.ArchiveMapper">
+
+
+    <select id="getSouceFolder" resultType="com.hybriddependcyanlysis.POJO.DAO.SourceFolderDAO">
+        select * from hybridanalysis.source_folders
+        <where>
+            <if test="id != '' and id != null">
+                and user_id = #{id}
+            </if>
+        </where>
+    </select>
+</mapper>

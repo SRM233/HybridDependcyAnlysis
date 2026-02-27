@@ -15,4 +15,6 @@ public interface FileMapper {
     ArrayList<FileDAO> getFileBySourceFolderId(Integer sourceFolderId);
 
     Integer getFileIdByName(String name);
+
+    void deleteFile(FileDAO fileDAO);
 }

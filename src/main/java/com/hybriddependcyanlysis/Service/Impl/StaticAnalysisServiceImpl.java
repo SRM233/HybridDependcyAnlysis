@@ -377,7 +377,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
                 if(fileRelatedTypes.stream().anyMatch(importClss::contains))
                 {
                     hasFileRisk = true;
-                    riskDetails.add("字段风险: " + importClss);
+                    riskDetails.add("import风险: " + importClss);
                     totalRiskCount++;
                 }
             }
@@ -423,17 +423,11 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
     }
 
-    private boolean checkFile(File outputPath)
-    {
-        return outputPath.exists();
-    }
+
 
 
     private void checkJsonFile(File file)
     {
-        if (!checkFile(file)) {
-            throw new RuntimeException("解析结果文件不存在: " + file);
-        }
 
         if (!file.exists()) {
             throw new RuntimeException("文件不存在: " + file);

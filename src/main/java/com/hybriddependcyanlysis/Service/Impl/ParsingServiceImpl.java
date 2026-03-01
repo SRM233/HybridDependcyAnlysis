@@ -147,7 +147,7 @@ public class ParsingServiceImpl implements ParsingService {
 
         // 只提取 JSP 生成的类（可选：如果你想把所有类都放一个 JSON，也可以直接用 javaClasses）
         List<JavaClassInfo> jspGeneratedClasses = javaClasses.stream()
-                .filter(c -> c.isGeneratedFromJsp)
+                .filter(c -> c.getIsGeneratedFromJsp())
                 .collect(Collectors.toList());
 
         jsonFileService.generateJsonArray(jspGeneratedClasses, jspJsonFile.getAbsolutePath());
@@ -178,23 +178,23 @@ public class ParsingServiceImpl implements ParsingService {
 
         JavaClassInfo classInfo = new JavaClassInfo();
 
-        classInfo.fullName = type.getQualifiedName();
-        classInfo.simpleName = type.getSimpleName();
-        classInfo.packageName = type.getPackage() != null ? type.getPackage().getQualifiedName() : "(default)";
-        classInfo.kind = (type instanceof CtInterface) ? "Interface" : "Class";
+        classInfo.setFullName(type.getQualifiedName());
+        classInfo.setSimpleName(type.getSimpleName());
+        classInfo.setPackageName(type.getPackage() != null ? type.getPackage().getQualifiedName() : "(default)");
+        classInfo.setKind((type instanceof CtInterface) ? "Interface" : "Class");
 
         // 修饰符
-        classInfo.modifiers = type.getModifiers().stream()
+        classInfo.setModifiers(type.getModifiers().stream()
                 .map(ModifierKind::toString)
                 .map(String::toLowerCase)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
 
         // ==================== 注解（保留） ====================
         for (CtAnnotation<?> annotation : type.getAnnotations()) {
             AnnotationInfo annInfo = new AnnotationInfo();
             annInfo.name = annotation.getAnnotationType().getQualifiedName();
             annotation.getValues().forEach((k, v) -> annInfo.values.put(k, v.toString()));
-            classInfo.annotations.add(annInfo);
+            classInfo.addAnnotation(annInfo);
         }
 
         // ==================== 字段 ====================
@@ -212,13 +212,28 @@ public class ParsingServiceImpl implements ParsingService {
                 annInfo.name = ann.getAnnotationType().getQualifiedName();
                 f.annotations.add(annInfo);
             }
-            classInfo.fields.add(f);
+            classInfo.addField(f);
         }
 
         // ==================== 方法 ====================
         for (CtMethod<?> method : type.getMethods()) {
             parseMethod(method, classInfo);
         }
+
+
+//        String fullSourceCode = type.toStringWithImports();
+//        classInfo.setFullSourceCode(fullSourceCode);
+
+        List<String> importList = new ArrayList<>();
+        Collection<CompilationUnit> allCUs = type.getFactory().CompilationUnit().getMap().values();
+        if (!allCUs.isEmpty()) {
+            CtCompilationUnit cu = allCUs.iterator().next();
+            for (CtImport imp : cu.getImports()) {
+                importList.add(imp.getReference().getSimpleName());
+            }
+        }
+        classInfo.setImports(importList);
+
 
         javaClasses.add(classInfo);
 
@@ -245,7 +260,7 @@ public class ParsingServiceImpl implements ParsingService {
             m.parameters.add(p);
         }
 
-        classInfo.methods.add(m);
+        classInfo.addMethod(m);
     }
 
     public void parsePackage(CtModel model, BufferedWriter writer) throws IOException {
@@ -426,9 +441,8 @@ public class ParsingServiceImpl implements ParsingService {
             // 【关键】给刚解析的这个类打上 JSP 生成标记
             if (!javaClasses.isEmpty()) {
                 JavaClassInfo lastAdded = javaClasses.get(javaClasses.size() - 1);
-                lastAdded.isGeneratedFromJsp = true;
-                lastAdded.originalJspFile = jspFile.getAbsolutePath();
-                lastAdded.originalJspFile = jspFile.getAbsolutePath();  // 记录原始 JSP 路径
+                lastAdded.setIsGeneratedFromJsp(true);
+                lastAdded.setOriginalJspFile(jspFile.getAbsolutePath());  // 记录原始 JSP 路径
             }
 
         } catch (Exception e) {

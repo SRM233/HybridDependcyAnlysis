@@ -114,11 +114,26 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 //        System.out.println("第一个类示例: " + classes.get(0));
 
         Set<String> targetAnnotations = Set.of(
-                "jakarta.ejb.Stateless", "jakarta.ejb.Stateful", "jakarta.ejb.Singleton",
-                "jakarta.ejb.MessageDriven", "jakarta.ejb.ApplicationException",
-                "jakarta.persistence.Entity", "jakarta.persistence.Table",
-                "jakarta.inject.Inject", "jakarta.annotation.Resource",
-                "jakarta.ejb.EJB", "jakarta.ejb.Remote", "jakarta.ejb.Local"
+                // Session State 重點（容器化痛點）
+                "jakarta.ejb.Stateful", "javax.ejb.Stateful",
+                "jakarta.ejb.Stateless", "javax.ejb.Stateless",
+                "jakarta.ejb.Singleton", "javax.ejb.Singleton",
+
+                // 其他 EJB 相關
+                "jakarta.ejb.MessageDriven", "javax.ejb.MessageDriven",
+                "jakarta.ejb.ApplicationException", "javax.ejb.ApplicationException",
+                "jakarta.ejb.EJB", "javax.ejb.EJB",
+                "jakarta.ejb.Remote", "javax.ejb.Remote",
+                "jakarta.ejb.Local", "javax.ejb.Local",
+
+                // JPA / 持久化（數據源配置影響容器化）
+                "jakarta.persistence.Entity", "javax.persistence.Entity",
+                "jakarta.persistence.Table", "javax.persistence.Table",
+                "jakarta.persistence.PersistenceContext", "javax.persistence.PersistenceContext",
+
+                // 注入相關（常見遷移問題）
+                "jakarta.inject.Inject", "javax.inject.Inject",
+                "jakarta.annotation.Resource", "javax.annotation.Resource"
         );
 
         Map<String, Integer> countMap = new LinkedHashMap<>();
@@ -303,6 +318,109 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         System.out.println("✅ web.xml 分析完成！文件: " + fileInfo.filePath);
         System.out.println("   版本: " + version + " | Servlets: " + servlets.size() + " | Filters: " + filters.size());
         System.out.println("   迁移建议: " + migrationSuggestions.size() + " 条 | 现代化评分: " + analysis.get("modernizationScore") + "/100");
+    }
+
+    @Override
+    public void FileStoreAnalysis(UserDTO userDTO) throws Exception {
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        String javaFilesParseOutputPath = astMapper.getJavaFilesParseOutput(userDTO);
+
+        File javaParseOutputFile = new File(javaFilesParseOutputPath);
+
+        checkJsonFile(javaParseOutputFile);
+
+        String content = Files.readString(javaParseOutputFile.toPath()).trim();
+
+        if (content.isEmpty() || content.equals("[]") || content.equals("{}")) {
+            throw new RuntimeException("文件内容为空或空结构: " + javaFilesParseOutputPath);
+        }
+
+        // 直接读取为 List<Map<String, Object>>
+        List<Map<String, Object>> classes = objectMapper.readValue(javaParseOutputFile,
+                objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+
+        if(classes.isEmpty())
+        {
+            throw new RuntimeException("解析结果文件 is null: " + javaFilesParseOutputPath);
+        }
+
+        Set<String> fileRelatedTypes = Set.of(
+                "java.io.File", "java.io.FileWriter", "java.io.FileReader",
+                "java.nio.file.Path", "java.nio.file.Files",
+                "java.io.BufferedWriter", "java.io.OutputStream"  // 示例，添加常见文件操作类
+        );
+
+//        Set<String> fileRelatedMethods = Set.of(
+//                "write", "createNewFile", "delete", "mkdir", "exists",
+//                "getAbsolutePath", "listFiles"  // 示例，常见文件方法
+//        );
+
+        List<Map<String, Object>> fileRiskClasses = new ArrayList<>();  // 存储有风险的类详情
+        int totalRiskCount = 0;  // 总风险点计数
+
+        for (Map<String, Object> cls : classes) {
+            String fullName = (String) cls.get("fullName");
+            if (fullName == null) continue;
+
+            boolean hasFileRisk = false;
+            List<String> riskDetails = new ArrayList<>();  // 这个类的风险点列表
+
+            // 检查字段（fields 数组）
+            List<String> imports = (List<String>) cls.getOrDefault("imports", List.of());
+
+//            System.out.println("類別 " + fullName + " 的 imports 有 " + imports.size() + " 個");
+
+            for(String importClss : imports)
+            {
+                if(fileRelatedTypes.stream().anyMatch(importClss::contains))
+                {
+                    hasFileRisk = true;
+                    riskDetails.add("字段风险: " + importClss);
+                    totalRiskCount++;
+                }
+            }
+
+            // 如果有风险，记录这个类详情
+            if (hasFileRisk) {
+                Map<String, Object> riskCls = new HashMap<>();
+                riskCls.put("className", fullName);  // 风险类名
+                riskCls.put("classType", cls.get("kind"));  // 类类型 (e.g., "Class" or "Interface")
+                riskCls.put("riskDetails", riskDetails);  // 风险详情列表
+
+                // 记录 "什么类引用了这个类" (假设你有 dependencyGraph 或 reverseDependencies 地图)
+                // 如果没有 dependencyGraph，你可以先注释这一行，或后续构建一个 reverseGraph
+                // List<String> referencedBy = getReferencedBy(fullName);  // 从 dependencyGraph 反查
+                // riskCls.put("referencedBy", referencedBy);
+
+                fileRiskClasses.add(riskCls);
+            }
+
+
+        }
+        Path outputRoot = javaParseOutputFile.toPath().getParent();
+        File reportFile = outputRoot.resolve("file-store-analysis-report.json").toFile();
+
+        Map<String, Object> report = new LinkedHashMap<>();
+        report.put("totalRiskCount", totalRiskCount);
+        report.put("riskClasses", fileRiskClasses);
+
+        // 生成建议（可选，根据你的需求添加）
+//        List<String> suggestions = new ArrayList<>();
+//        if (totalRiskCount > 0) {
+//            suggestions.add("⚠️ 检测到 " + totalRiskCount + " 个文件存储相关风险点");
+//            suggestions.add("建议: 迁移到云存储服务（如 AWS S3），避免本地文件操作");
+//        } else {
+//            suggestions.add("✅ 未检测到文件存储风险");
+//        }
+//        report.put("suggestions", suggestions);
+
+        // 写报告
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, report);
+
+        System.out.println("🎉 文件存储分析完成！报告生成 → " + reportFile.getAbsolutePath());
+
     }
 
     private boolean checkFile(File outputPath)

@@ -6,6 +6,7 @@ import com.hybriddependcyanlysis.Service.StaticAnalysisService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -51,6 +52,13 @@ public class StaticAnalysisController {
     public Result webXMlFileAnalysis(@RequestBody UserDTO userDTO) throws IOException {
         log.info("GetWebXMlFileAnalysis:{}", userDTO);
         staticAnalysisService.analyzeWebXml(userDTO);
+        return Result.success();
+    }
+
+    @PostMapping("/fileStoreAnalysis")
+    public Result FileStoreAnalysis(@RequestBody UserDTO userDTO) throws Exception {
+        log.info("FileStoreAnalysis:{}", userDTO);
+        staticAnalysisService.FileStoreAnalysis(userDTO);
         return Result.success();
     }
 

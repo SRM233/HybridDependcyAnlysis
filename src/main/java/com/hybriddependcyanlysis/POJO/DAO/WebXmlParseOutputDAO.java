@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class ApplicationXmlParseOutput {
+public class WebXmlParseOutputDAO {
     private Integer id;
     private Integer userId;
     private Integer sourceFolderId;

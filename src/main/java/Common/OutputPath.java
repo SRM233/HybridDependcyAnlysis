@@ -8,6 +8,7 @@ public class OutputPath {
     public static final String JSP_PARSE_RESULT_PATH              = "jsp-parse-output.json";          // ← 加 .json
     public static final String JSF_PARSE_RESULT_PATH              = "jsf-parse-output.json";           // ← 加 .json
     public static final String WEB_XML_PARSE_RESULT_PATH          = "web-xml-parse-output.json";       // ← 加 .json
+    public static final String POM_XML_PARSE_RESULT_PATH          = "pom-xml-parse-output.json";       // ← 加 .json
     public static final String PERSISTENCE_PARSE_RESULT_PATH  = "persistence-xml-parse-output.json"; // ← 加 .json
     public static final String EJB_JAR_PARSE_RESULT_PATH          = "ejb-jar-xml-parse-output.json";   // ← 加 .json
     public static final String FACES_CONFIG_PARSE_RESULT_PATH     = "faces-config-parse-output.json";  // ← 加 .json

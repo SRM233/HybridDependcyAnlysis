@@ -914,6 +914,53 @@ public class ParsingServiceImpl implements ParsingService {
         System.out.println(" - 数据库记录已更新，source_folder_id: " + sourceFolderDAO.getId());
     }
 
+    @Override
+    public void parsePomXmlFile(File pomOutput, SourceFolderDAO sourceFolderDAO) throws IOException {
+        parseGenericXml(pomOutput, sourceFolderDAO, "pom.xml", "pom.xml", (doc, xmlData) -> {
+            String javaVersion = getTagValue(doc, "java.version");
+
+            xmlData.put("javaVersion", javaVersion.isEmpty() ? "unknown" : javaVersion);
+
+            NodeList parents = doc.getElementsByTagName("parent");
+
+            for(int i = 0; i < parents.getLength(); i++)
+            {
+                Element parent = (Element) parents.item(i);
+                Map<String, String> parentInfo = new HashMap<>();
+                parentInfo.put("groupId", getTagValue(parent, "groupId"));
+                parentInfo.put("artifactId", getTagValue(parent, "artifactId"));
+                parentInfo.put("version", getTagValue(parent, "version"));
+                xmlData.put("parent", parentInfo);
+            }
+
+            List<String> deps = new ArrayList<>();
+            NodeList dependencies = doc.getElementsByTagName("dependencies");
+            for (int i = 0; i < dependencies.getLength(); i++) {
+                Element dep = (Element) dependencies.item(i);
+                String g = getTagValue(dep, "groupId");
+                String a = getTagValue(dep, "artifactId");
+                String v = getTagValue(dep, "version");
+                deps.add(g + ":" + a + ":" + (v.isEmpty() ? "未指定" : v));
+            }
+            xmlData.put("dependencies", deps);
+
+            List<String> plugins = new ArrayList<>();
+            NodeList pluginNodes = doc.getElementsByTagName("plugin");
+            for (int i = 0; i < pluginNodes.getLength(); i++) {
+                Element plugin = (Element) pluginNodes.item(i);
+                String artifactId = getTagValue(plugin, "artifactId");
+                if (!artifactId.isEmpty()) {
+                    plugins.add(artifactId);
+                }
+            }
+            xmlData.put("plugins", plugins);
+
+            NodeList profiles = doc.getElementsByTagName("profile");
+            xmlData.put("profileCount", profiles.getLength());
+
+        });
+    }
+
     // Helper method for getTagValue (Element)
     private String getTagValue(Element element, String tagName) {
         NodeList list = element.getElementsByTagName(tagName);

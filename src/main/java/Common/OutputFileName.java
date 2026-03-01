@@ -11,6 +11,7 @@ public class OutputFileName {
 
     // 核心部署描述符
     public static final String WEB_XML_OUTPUT_FILE_NAME      = "WebXmlParseOutput";
+    public static final String POM_XML_OUTPUT_FILE_NAME      = "PomXmlParseOutput";
     public static final String APPLICATION_XML_OUTPUT_FILE_NAME = "ApplicationXmlParseOutput";  // EAR 的 META-INF/application.xml
 
     // JSF / Jakarta Faces 相关

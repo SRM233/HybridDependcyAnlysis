@@ -38,7 +38,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
     @Autowired
     private IngestMapper ingestMapper;
     @Autowired
-    private ParsingServiceImpl parsingServiceImpl;
+    private ParsingService parsingService;
 
 
     @Override
@@ -134,22 +134,22 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
             throw new RuntimeException(e);
         }
 
-        PersistenceXmlParseOutput persistenceXmlParseOutput = parseSourceCodeMapper.getPersistenceXmlParseOutputBySourceFolderId(sourceFolderDAO.getId());
-        if(persistenceXmlParseOutput==null)
+        PersistenceXmlParseOutputDAO persistenceXmlParseOutputDAO = parseSourceCodeMapper.getPersistenceXmlParseOutputBySourceFolderId(sourceFolderDAO.getId());
+        if(persistenceXmlParseOutputDAO ==null)
         {
-            persistenceXmlParseOutput = new PersistenceXmlParseOutput();
-            persistenceXmlParseOutput.setPath(parsePersistenceXmlParseOutput.getAbsolutePath());
-            persistenceXmlParseOutput.setName(OutputFileName.PERSISTENCE_OUTPUT_FILE_NAME);
-            persistenceXmlParseOutput.setUserId(sourceFolderDAO.getUserId());
-            persistenceXmlParseOutput.setSourceFolderId(sourceFolderDAO.getId());
-            persistenceXmlParseOutput.setCreateTime(LocalDateTime.now());
-            persistenceXmlParseOutput.setUpdateTime(LocalDateTime.now());
-            parseSourceCodeMapper.insertPersistenceXmlParseOutput(persistenceXmlParseOutput);
+            persistenceXmlParseOutputDAO = new PersistenceXmlParseOutputDAO();
+            persistenceXmlParseOutputDAO.setPath(parsePersistenceXmlParseOutput.getAbsolutePath());
+            persistenceXmlParseOutputDAO.setName(OutputFileName.PERSISTENCE_OUTPUT_FILE_NAME);
+            persistenceXmlParseOutputDAO.setUserId(sourceFolderDAO.getUserId());
+            persistenceXmlParseOutputDAO.setSourceFolderId(sourceFolderDAO.getId());
+            persistenceXmlParseOutputDAO.setCreateTime(LocalDateTime.now());
+            persistenceXmlParseOutputDAO.setUpdateTime(LocalDateTime.now());
+            parseSourceCodeMapper.insertPersistenceXmlParseOutput(persistenceXmlParseOutputDAO);
         }
 
 
 
-        parseSourceCodeMapper.updatePersistenceXmlParseOutput(persistenceXmlParseOutput);
+        parseSourceCodeMapper.updatePersistenceXmlParseOutput(persistenceXmlParseOutputDAO);
 
 
         System.out.println("persistence.xml analysis complete. Results in "
@@ -175,20 +175,20 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
             throw new RuntimeException(e);
         }
 
-        EjbJarXmlParseOutput ejbJarXmlParseOutput = parseSourceCodeMapper.getEjbJarXmlParseOutputBySourceFolderId(sourceFolderDAO.getId());
-        if(ejbJarXmlParseOutput==null)
+        EjbJarXmlParseOutputDAO ejbJarXmlParseOutputDAO = parseSourceCodeMapper.getEjbJarXmlParseOutputBySourceFolderId(sourceFolderDAO.getId());
+        if(ejbJarXmlParseOutputDAO ==null)
         {
-            ejbJarXmlParseOutput = new EjbJarXmlParseOutput();
-            ejbJarXmlParseOutput.setPath(parseEjbJarXmlParseOutput.getAbsolutePath());
-            ejbJarXmlParseOutput.setName(OutputFileName.EJB_JAR_XML_OUTPUT_FILE_NAME);
-            ejbJarXmlParseOutput.setUserId(sourceFolderDAO.getUserId());
-            ejbJarXmlParseOutput.setSourceFolderId(sourceFolderDAO.getId());
-            ejbJarXmlParseOutput.setCreateTime(LocalDateTime.now());
-            ejbJarXmlParseOutput.setUpdateTime(LocalDateTime.now());
-            parseSourceCodeMapper.insertEjbJarXmlParseOutput(ejbJarXmlParseOutput);
+            ejbJarXmlParseOutputDAO = new EjbJarXmlParseOutputDAO();
+            ejbJarXmlParseOutputDAO.setPath(parseEjbJarXmlParseOutput.getAbsolutePath());
+            ejbJarXmlParseOutputDAO.setName(OutputFileName.EJB_JAR_XML_OUTPUT_FILE_NAME);
+            ejbJarXmlParseOutputDAO.setUserId(sourceFolderDAO.getUserId());
+            ejbJarXmlParseOutputDAO.setSourceFolderId(sourceFolderDAO.getId());
+            ejbJarXmlParseOutputDAO.setCreateTime(LocalDateTime.now());
+            ejbJarXmlParseOutputDAO.setUpdateTime(LocalDateTime.now());
+            parseSourceCodeMapper.insertEjbJarXmlParseOutput(ejbJarXmlParseOutputDAO);
         }
 
-        parseSourceCodeMapper.updateEjbJarXmlParseOutput(ejbJarXmlParseOutput);
+        parseSourceCodeMapper.updateEjbJarXmlParseOutput(ejbJarXmlParseOutputDAO);
 
         System.out.println("ejb-jar.xml analysis complete. Results in "
                 + parseEjbJarXmlParseOutput.getAbsolutePath());
@@ -214,21 +214,21 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
             throw new RuntimeException(e);
         }
 
-        FacesConfigXmlParseOutput facesConfigXmlParseOutput =
+        FacesConfigXmlParseOutputDAO facesConfigXmlParseOutputDAO =
                 parseSourceCodeMapper.getFacesConfigXmlParseOutputBySourceFolderId(sourceFolderDAO.getId());
 
-        if (facesConfigXmlParseOutput == null) {
-            facesConfigXmlParseOutput = new FacesConfigXmlParseOutput();
-            facesConfigXmlParseOutput.setPath(parseFacesConfigXmlParseOutput.getAbsolutePath());
-            facesConfigXmlParseOutput.setName(OutputFileName.FACES_CONFIG_OUTPUT_FILE_NAME);
-            facesConfigXmlParseOutput.setUserId(sourceFolderDAO.getUserId());
-            facesConfigXmlParseOutput.setSourceFolderId(sourceFolderDAO.getId());
-            facesConfigXmlParseOutput.setCreateTime(LocalDateTime.now());
-            facesConfigXmlParseOutput.setUpdateTime(LocalDateTime.now());
-            parseSourceCodeMapper.insertFacesConfigXmlParseOutput(facesConfigXmlParseOutput);
+        if (facesConfigXmlParseOutputDAO == null) {
+            facesConfigXmlParseOutputDAO = new FacesConfigXmlParseOutputDAO();
+            facesConfigXmlParseOutputDAO.setPath(parseFacesConfigXmlParseOutput.getAbsolutePath());
+            facesConfigXmlParseOutputDAO.setName(OutputFileName.FACES_CONFIG_OUTPUT_FILE_NAME);
+            facesConfigXmlParseOutputDAO.setUserId(sourceFolderDAO.getUserId());
+            facesConfigXmlParseOutputDAO.setSourceFolderId(sourceFolderDAO.getId());
+            facesConfigXmlParseOutputDAO.setCreateTime(LocalDateTime.now());
+            facesConfigXmlParseOutputDAO.setUpdateTime(LocalDateTime.now());
+            parseSourceCodeMapper.insertFacesConfigXmlParseOutput(facesConfigXmlParseOutputDAO);
         }
 
-        parseSourceCodeMapper.updateFacesConfigXmlParseOutput(facesConfigXmlParseOutput);
+        parseSourceCodeMapper.updateFacesConfigXmlParseOutput(facesConfigXmlParseOutputDAO);
 
         System.out.println("faces-config.xml analysis complete. Results in "
                 + parseFacesConfigXmlParseOutput.getAbsolutePath());
@@ -263,7 +263,48 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
     @Override
     public void staticParseFile(Integer userId, Integer sourceFolderId) throws IOException {
         SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
-        parsingServiceImpl.staticParseFiles(sourceFolderDAO);
+        parsingService.staticParseFiles(sourceFolderDAO);
+    }
+
+    @Override
+    public void parsePomXmlFile(Integer userId, Integer sourceFolderId) throws IOException {
+        SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
+
+        Path outputPath = checkOutputFolder(sourceFolderDAO.getDirPath());
+
+        Path pomResultPath = outputPath.resolve(OutputPath.POM_XML_PARSE_RESULT_PATH);
+
+        File pomOutput = pomResultPath.toFile();
+
+        parsePomXmlFile(pomOutput, sourceFolderDAO);
+
+    }
+
+    private void parsePomXmlFile(File pomOutput, SourceFolderDAO sourceFolderDAO) throws IOException {
+        parsingService.parsePomXmlFile(pomOutput,sourceFolderDAO);
+
+        PomXmlParseOutputDAO pomXmlParseOutputDAO = parseSourceCodeMapper.getPomXmlParseOutputBySourceFolderId(sourceFolderDAO.getId());
+
+        if (pomXmlParseOutputDAO == null) {
+            pomXmlParseOutputDAO = new PomXmlParseOutputDAO();
+            pomXmlParseOutputDAO.setPath(pomOutput.getAbsolutePath());           // ← 改用 pomOutput
+            pomXmlParseOutputDAO.setName(OutputFileName.POM_XML_OUTPUT_FILE_NAME);  // ← 建議改用適合POM的檔名常量
+            pomXmlParseOutputDAO.setUserId(sourceFolderDAO.getUserId());
+            pomXmlParseOutputDAO.setSourceFolderId(sourceFolderDAO.getId());
+            pomXmlParseOutputDAO.setCreateTime(LocalDateTime.now());
+            pomXmlParseOutputDAO.setUpdateTime(LocalDateTime.now());
+
+            // 假設你已經新增對應的 insert 方法
+            parseSourceCodeMapper.insertPomXmlParseOutput(pomXmlParseOutputDAO);
+        }
+
+        pomXmlParseOutputDAO.setUpdateTime(LocalDateTime.now());
+
+// 假設你已經新增對應的 update 方法
+        parseSourceCodeMapper.updatePomXmlParseOutput(pomXmlParseOutputDAO);
+
+        System.out.println("POM parse analysis complete. Results in " + pomOutput.getAbsolutePath());
+
     }
 
     private void parseJsfFiles(File jsfFilesParseOutput, SourceFolderDAO sourceFolderDAO) throws IOException {
@@ -297,21 +338,21 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
             throw new RuntimeException(e);
         }
 
-        ApplicationXmlParseOutput applicationXmlParseOutput =
+        ApplicationXmlParseOutputDAO applicationXmlParseOutputDAO =
                 parseSourceCodeMapper.getApplicationXmlParseOutputBySourceFolderId(sourceFolderDAO.getId());
 
-        if (applicationXmlParseOutput == null) {
-            applicationXmlParseOutput = new ApplicationXmlParseOutput();
-            applicationXmlParseOutput.setPath(parseApplicationXmlParseOutput.getAbsolutePath());
-            applicationXmlParseOutput.setName(OutputFileName.APPLICATION_CONTEXT_OUTPUT_FILE_NAME);
-            applicationXmlParseOutput.setUserId(sourceFolderDAO.getUserId());
-            applicationXmlParseOutput.setSourceFolderId(sourceFolderDAO.getId());
-            applicationXmlParseOutput.setCreateTime(LocalDateTime.now());
-            applicationXmlParseOutput.setUpdateTime(LocalDateTime.now());
-            parseSourceCodeMapper.insertApplicationXmlParseOutput(applicationXmlParseOutput);
+        if (applicationXmlParseOutputDAO == null) {
+            applicationXmlParseOutputDAO = new ApplicationXmlParseOutputDAO();
+            applicationXmlParseOutputDAO.setPath(parseApplicationXmlParseOutput.getAbsolutePath());
+            applicationXmlParseOutputDAO.setName(OutputFileName.APPLICATION_CONTEXT_OUTPUT_FILE_NAME);
+            applicationXmlParseOutputDAO.setUserId(sourceFolderDAO.getUserId());
+            applicationXmlParseOutputDAO.setSourceFolderId(sourceFolderDAO.getId());
+            applicationXmlParseOutputDAO.setCreateTime(LocalDateTime.now());
+            applicationXmlParseOutputDAO.setUpdateTime(LocalDateTime.now());
+            parseSourceCodeMapper.insertApplicationXmlParseOutput(applicationXmlParseOutputDAO);
         }
 
-        parseSourceCodeMapper.updateApplicationXmlParseOutput(applicationXmlParseOutput);
+        parseSourceCodeMapper.updateApplicationXmlParseOutput(applicationXmlParseOutputDAO);
 
         System.out.println("application.xml analysis complete. Results in "
                 + parseApplicationXmlParseOutput.getAbsolutePath());
@@ -320,22 +361,22 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
     private void WebXmlFiles(File webXmlParseoutput, SourceFolderDAO sourceFolderDAO) throws IOException {
         ParsingService.parseWebXml(webXmlParseoutput, sourceFolderDAO);
 
-        WebXmlParseOutput webXmlParseOutput = parseSourceCodeMapper.getWebXmlParseOutputBySourceFolderId(sourceFolderDAO.getId());
-        if(webXmlParseOutput==null)
+        WebXmlParseOutputDAO webXmlParseOutputDAO = parseSourceCodeMapper.getWebXmlParseOutputBySourceFolderId(sourceFolderDAO.getId());
+        if(webXmlParseOutputDAO ==null)
         {
-            webXmlParseOutput = new WebXmlParseOutput();
-            webXmlParseOutput.setPath(webXmlParseoutput.getAbsolutePath());
-            webXmlParseOutput.setName(OutputFileName.WEB_XML_OUTPUT_FILE_NAME);
-            webXmlParseOutput.setUserId(sourceFolderDAO.getUserId());
-            webXmlParseOutput.setSourceFolderId(sourceFolderDAO.getId());
-            webXmlParseOutput.setCreateTime(LocalDateTime.now());
-            webXmlParseOutput.setUpdateTime(LocalDateTime.now());
-            parseSourceCodeMapper.insertWebXmlParseOutput(webXmlParseOutput);
+            webXmlParseOutputDAO = new WebXmlParseOutputDAO();
+            webXmlParseOutputDAO.setPath(webXmlParseoutput.getAbsolutePath());
+            webXmlParseOutputDAO.setName(OutputFileName.WEB_XML_OUTPUT_FILE_NAME);
+            webXmlParseOutputDAO.setUserId(sourceFolderDAO.getUserId());
+            webXmlParseOutputDAO.setSourceFolderId(sourceFolderDAO.getId());
+            webXmlParseOutputDAO.setCreateTime(LocalDateTime.now());
+            webXmlParseOutputDAO.setUpdateTime(LocalDateTime.now());
+            parseSourceCodeMapper.insertWebXmlParseOutput(webXmlParseOutputDAO);
         }
 
 
 
-        parseSourceCodeMapper.updateWebXmlParseOutput(webXmlParseOutput);
+        parseSourceCodeMapper.updateWebXmlParseOutput(webXmlParseOutputDAO);
 
 
         System.out.println("Web.xml analysis complete. Results in "

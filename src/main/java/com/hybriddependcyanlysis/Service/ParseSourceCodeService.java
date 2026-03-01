@@ -21,4 +21,6 @@ public interface ParseSourceCodeService {
     void parseJsfFile(Integer userId, Integer sourceFolderId) throws IOException;
 
     void staticParseFile(Integer userId, Integer sourceFolderId) throws IOException;
+
+    void parsePomXmlFile(Integer userId, Integer sourceFolderId) throws IOException;
 }

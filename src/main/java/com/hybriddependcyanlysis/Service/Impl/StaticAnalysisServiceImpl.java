@@ -304,6 +304,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         System.out.println("   版本: " + version + " | Servlets: " + servlets.size() + " | Filters: " + filters.size());
         System.out.println("   迁移建议: " + migrationSuggestions.size() + " 条 | 现代化评分: " + analysis.get("modernizationScore") + "/100");
     }
+
     private boolean checkFile(File outputPath)
     {
         return outputPath.exists();

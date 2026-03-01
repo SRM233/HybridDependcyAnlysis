@@ -42,4 +42,6 @@ public interface ParsingService {
     void parsingJsf(File jsfFilesParseOutput, SourceFolderDAO sourceFolderDAO) throws IOException;
 
     void staticParseFiles(SourceFolderDAO sourceFolderDAO) throws IOException;
+
+    void parsePomXmlFile(File pomOutput, SourceFolderDAO sourceFolderDAO) throws IOException;
 }

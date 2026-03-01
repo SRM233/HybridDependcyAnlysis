@@ -54,41 +54,41 @@ public interface ParseSourceCodeMapper {
     JspParseErrorDAO getJspParseErrorBySourceFolderId(Integer id);
 
     @Select("select * from hybridanalysis.web_xml_parse_output where source_folder_id = #{id};")
-    WebXmlParseOutput getWebXmlParseOutputBySourceFolderId(Integer id);
+    WebXmlParseOutputDAO getWebXmlParseOutputBySourceFolderId(Integer id);
 
 
-    void insertWebXmlParseOutput(WebXmlParseOutput webXmlParseOutput);
+    void insertWebXmlParseOutput(WebXmlParseOutputDAO webXmlParseOutputDAO);
 
-    void updateWebXmlParseOutput(WebXmlParseOutput webXmlParseOutput);
+    void updateWebXmlParseOutput(WebXmlParseOutputDAO webXmlParseOutputDAO);
 
     @Select("select * from hybridanalysis.persistence_xml_parse_output where source_folder_id = #{id}")
-    PersistenceXmlParseOutput getPersistenceXmlParseOutputBySourceFolderId(Integer id);
+    PersistenceXmlParseOutputDAO getPersistenceXmlParseOutputBySourceFolderId(Integer id);
 
-    void insertPersistenceXmlParseOutput(PersistenceXmlParseOutput persistenceXmlParseOutput);
+    void insertPersistenceXmlParseOutput(PersistenceXmlParseOutputDAO persistenceXmlParseOutputDAO);
 
-    void updatePersistenceXmlParseOutput(PersistenceXmlParseOutput persistenceXmlParseOutput);
+    void updatePersistenceXmlParseOutput(PersistenceXmlParseOutputDAO persistenceXmlParseOutputDAO);
 
 
     @Select("select * from hybridanalysis.ejb_jar_xml_parse_output where source_folder_id = #{id}")
-    EjbJarXmlParseOutput getEjbJarXmlParseOutputBySourceFolderId(Integer id);
+    EjbJarXmlParseOutputDAO getEjbJarXmlParseOutputBySourceFolderId(Integer id);
 
     @Select("select * from hybridanalysis.faces_config_xml_parse_output where source_folder_id = #{id}")
-    FacesConfigXmlParseOutput getFacesConfigXmlParseOutputBySourceFolderId(Integer id);
+    FacesConfigXmlParseOutputDAO getFacesConfigXmlParseOutputBySourceFolderId(Integer id);
 
     @Select("select * from hybridanalysis.application_xml_parse_output where source_folder_id = #{id}")
-    ApplicationXmlParseOutput getApplicationXmlParseOutputBySourceFolderId(Integer id);
+    ApplicationXmlParseOutputDAO getApplicationXmlParseOutputBySourceFolderId(Integer id);
 
-    void insertEjbJarXmlParseOutput(EjbJarXmlParseOutput ejbJarXmlParseOutput);
+    void insertEjbJarXmlParseOutput(EjbJarXmlParseOutputDAO ejbJarXmlParseOutputDAO);
 
-    void updateEjbJarXmlParseOutput(EjbJarXmlParseOutput ejbJarXmlParseOutput);
+    void updateEjbJarXmlParseOutput(EjbJarXmlParseOutputDAO ejbJarXmlParseOutputDAO);
 
-    void insertFacesConfigXmlParseOutput(FacesConfigXmlParseOutput facesConfigXmlParseOutput);
+    void insertFacesConfigXmlParseOutput(FacesConfigXmlParseOutputDAO facesConfigXmlParseOutputDAO);
 
-    void updateFacesConfigXmlParseOutput(FacesConfigXmlParseOutput facesConfigXmlParseOutput);
+    void updateFacesConfigXmlParseOutput(FacesConfigXmlParseOutputDAO facesConfigXmlParseOutputDAO);
 
-    void insertApplicationXmlParseOutput(ApplicationXmlParseOutput applicationXmlParseOutput);
+    void insertApplicationXmlParseOutput(ApplicationXmlParseOutputDAO applicationXmlParseOutputDAO);
 
-    void updateApplicationXmlParseOutput(ApplicationXmlParseOutput applicationXmlParseOutput);
+    void updateApplicationXmlParseOutput(ApplicationXmlParseOutputDAO applicationXmlParseOutputDAO);
 
     @Select("select * from hybridanalysis.jsf_parse_output  where source_folder_id = #{id}")
     JsfParseOutPutDAO getJsfParseOutputBySourceFolderId(Integer id);
@@ -96,4 +96,11 @@ public interface ParseSourceCodeMapper {
     void insertJsfParseOutput(JsfParseOutPutDAO jsfParseOutputDAO);
 
     void updateJsfParseOutput(JsfParseOutPutDAO jsfParseOutputDAO);
+
+    @Select("select * from hybridanalysis.pom_xml_parse_output where source_folder_id = #{id}")
+    PomXmlParseOutputDAO getPomXmlParseOutputBySourceFolderId(Integer id);
+
+    void insertPomXmlParseOutput(PomXmlParseOutputDAO pomXmlParseOutputDAO);
+
+    void updatePomXmlParseOutput(PomXmlParseOutputDAO pomXmlParseOutputDAO);
 }

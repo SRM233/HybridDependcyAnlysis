@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class FacesConfigXmlParseOutput {
+public class PersistenceXmlParseOutputDAO {
     private Integer id;
     private Integer userId;
     private Integer sourceFolderId;

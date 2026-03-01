@@ -47,6 +47,12 @@
         insert into hybridanalysis.jsf_parse_output (user_id, source_folder_id, name, path, create_time, update_time)
         values (#{userId}, #{sourceFolderId}, #{name}, #{path}, #{createTime}, #{updateTime})
     </insert>
+    <insert id="insertPomXmlParseOutput">
+        insert into hybridanalysis.pom_xml_parse_output (user_id, source_folder_id, name, path, create_time, update_time)
+        values (#{userId}, #{sourceFolderId}, #{name}, #{path}, #{createTime}, #{updateTime})
+    </insert>
+
+
 
     <update id="updateJavaFilesParseOutput">
         update hybridanalysis.java_files_parse_output set update_time =#{updateTime} where source_folder_id = #{sourceFolderId}
@@ -77,6 +83,9 @@
     </update>
     <update id="updateJsfParseOutput">
         update hybridanalysis.jsf_parse_output set update_time = #{updateTime} where source_folder_id = #{sourceFolderId}
+    </update>
+    <update id="updatePomXmlParseOutput">
+        update hybridanalysis.pom_xml_parse_output set update_time = #{updateTime} where source_folder_id = #{sourceFolderId}
     </update>
     <select id="getOutPutBySourceFolderId" resultType="com.hybriddependcyanlysis.POJO.DAO.JavaFilesParseDAO">
         select * from hybridanalysis.java_files_parse_output where source_folder_id = #{sourceFolderId}

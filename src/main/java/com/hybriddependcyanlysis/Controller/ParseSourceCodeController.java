@@ -86,6 +86,13 @@ public class ParseSourceCodeController {
         return Result.success();
     }
 
+    @PostMapping("/parsePomXmlFile")
+    public Result parsePomXmlFile(Integer userId, Integer sourceFolderId) throws IOException {
+        log.info("Source folder id:{}", sourceFolderId);
+        parseSourceCodeService.parsePomXmlFile(userId, sourceFolderId);
+        return Result.success();
+    }
+
 //    @PostMapping("/parsingClientSide")
 //    public Result parsingClientFiles(Integer sourceFolderId)
 //    {

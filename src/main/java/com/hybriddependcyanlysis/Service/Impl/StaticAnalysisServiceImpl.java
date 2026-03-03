@@ -465,7 +465,6 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         for (Map<String, Object> unit : persistenceUnits) {
             String transactionType = (String) unit.getOrDefault("transactionType", "unknown");
             String jtaDataSource = (String) unit.getOrDefault("jtaDataSource", "");
-//            String name = unit.getOrDefault("name", "unknown").toString();
             Map<String, String> properties = (Map<String, String>) unit.getOrDefault("properties", Map.of());
 
             if (transactionType.equals("JTA")) {
@@ -474,8 +473,15 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             if (!jtaDataSource.isEmpty()) {
                 migrationSuggestions.add("☁️ 发现 jta-data-source = " + jtaDataSource + "（JNDI），建议改为环境变量注入 (e.g. SPRING_DATASOURCE_URL)");
             }
-            if (properties.containsKey("hibernate.connection.url") || properties.containsKey("jakarta.persistence.jdbc.url")) {
-                migrationSuggestions.add("🚨 properties 中发现硬编码 JDBC URL / 用户名 / 密码，必须全部外部化到 Kubernetes Secret");
+            // 数据库依赖分析（新增）
+            boolean hasHardcodedDb = properties.keySet().stream()
+                    .anyMatch(k -> k.contains("jdbc.url") || k.contains("username") || k.contains("password"));
+            if (hasHardcodedDb) {
+                migrationSuggestions.add("🚨 properties 中发现硬编码数据库 URL / 用户名 / 密码，必须全部外部化到 Kubernetes Secret");
+            }
+            String provider = (String) unit.getOrDefault("provider", "unknown");
+            if (provider.contains("hibernate") && provider.compareTo("5.0") < 0) {
+                migrationSuggestions.add("⚠️ provider = " + provider + "（旧版本 Hibernate），建议升级到 6.x+ 以兼容容器");
             }
         }
 
@@ -486,7 +492,6 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         System.out.println("✅ persistence.xml 分析完成 → " + reportFile.getAbsolutePath());
     }
-
     @Override
     public void ejbJarAnalysis(UserDTO userDTO) throws IOException {
         String outputPath = astMapper.getEjbJarXmlParseOutput(userDTO);
@@ -533,6 +538,10 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             String transactionType = (String) bean.getOrDefault("transactionType", "");
             if (transactionType.equals("Bean")) {
                 migrationSuggestions.add("ℹ️ transaction-type=Bean（用户管理事务），建议改为 Container 以利用 Jakarta Transactions");
+            }
+            List<String> securityRoles = getListString(bean, "securityRoles");
+            if (!securityRoles.isEmpty()) {
+                migrationSuggestions.add("🔐 发现 security-role，建议迁移到 Keycloak 或 Spring Security RBAC");
             }
         }
 

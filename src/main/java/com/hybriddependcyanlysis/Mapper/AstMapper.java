@@ -68,4 +68,10 @@ public interface AstMapper {
 
     @Select("select path from hybridanalysis.web_xml_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
     String getWebXmlParseOutput(UserDTO userDTO);
+
+    @Select("select path from hybridanalysis.persistence_xml_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
+    String getPersistenceXmlParseOutput(UserDTO userDTO);
+
+    @Select("select path from hybridanalysis.ejb_jar_xml_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
+    String getEjbJarXmlParseOutput(UserDTO userDTO);
 }

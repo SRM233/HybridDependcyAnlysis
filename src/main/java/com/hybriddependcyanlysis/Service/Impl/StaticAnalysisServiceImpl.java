@@ -38,7 +38,8 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             "contextParams", "filters", "servlets", "listeners",
             "sessionConfig", "welcomeFiles", "taglibs",
             "resourceRefs", "securityConstraints", "securityRoles",
-            "loginConfig", "errorPages", "mimeMappings"
+            "loginConfig", "errorPages", "mimeMappings", "filterMapping",
+            "servletMapping"
     );
 
     @Override
@@ -185,6 +186,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         File webXmlJsonFile = new File(outputPath);
         checkJsonFile(webXmlJsonFile);
 
+        //read web.xml json file
         ObjectMapper objectMapper = new ObjectMapper();
         List<XmlFileInfo> webDataList = objectMapper.readValue(webXmlJsonFile,
                 new TypeReference<List<XmlFileInfo>>() {});
@@ -197,6 +199,8 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         XmlFileInfo fileInfo = webDataList.get(0);
         Map<String, Object> data = fileInfo.data;
 
+        Path reportPath = webXmlJsonFile.toPath().getParent();
+        File reportFile = reportPath.resolve("web.xml-analysis.json").toFile();
         Map<String, Object> analysis = new LinkedHashMap<>();
         List<String> migrationSuggestions = new ArrayList<>();
 
@@ -207,7 +211,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         // 版本 & metadata-complete（最重要！）
         String version = (String) data.getOrDefault("version", "unknown");
-        boolean metadataComplete = Boolean.TRUE.equals(data.get("metadataComplete"));
+        boolean metadataComplete = Boolean.parseBoolean(String.valueOf(data.get("metadataComplete")));
         analysis.put("webXmlVersion", version);
         analysis.put("metadataComplete", data.get("metadataComplete"));
 
@@ -309,7 +313,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         // ====================== 4. 最终汇总 ======================
         analysis.put("migrationSuggestions", migrationSuggestions);
         analysis.put("totalSuggestions", migrationSuggestions.size());
-//        analysis.put("modernizationScore", calculateScore(migrationSuggestions.size(), version)); // 升级版评分
+        analysis.put("modernizationScore", calculateScore(migrationSuggestions.size(), version)); // 升级版评分
 
         // 保存到数据库（建议）
         // astMapper.saveWebXmlAnalysis(userDTO.getId(), analysis);
@@ -318,6 +322,9 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         System.out.println("✅ web.xml 分析完成！文件: " + fileInfo.filePath);
         System.out.println("   版本: " + version + " | Servlets: " + servlets.size() + " | Filters: " + filters.size());
         System.out.println("   迁移建议: " + migrationSuggestions.size() + " 条 | 现代化评分: " + analysis.get("modernizationScore") + "/100");
+
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, analysis);
+
     }
 
     @Override
@@ -423,7 +430,120 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
     }
 
+    @Override
+    public void persistenceAnalysis(UserDTO userDTO) throws IOException {
+        String outputPath = astMapper.getPersistenceXmlParseOutput(userDTO);
+        File persistenceJsonFile = new File(outputPath);
+        checkJsonFile(persistenceJsonFile);
 
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<XmlFileInfo> persistenceDataList = objectMapper.readValue(persistenceJsonFile,
+                new TypeReference<List<XmlFileInfo>>() {});
+
+        if (persistenceDataList.isEmpty()) {
+            System.err.println("⚠️ persistence.xml JSON 为空: " + outputPath);
+            return;
+        }
+
+        XmlFileInfo fileInfo = persistenceDataList.get(0);
+        Map<String, Object> data = fileInfo.data;
+
+        Path reportPath = persistenceJsonFile.toPath().getParent();
+        File reportFile = reportPath.resolve("persistence.xml-analysis.json").toFile();
+        Map<String, Object> analysis = new LinkedHashMap<>();
+        List<String> migrationSuggestions = new ArrayList<>();
+
+        // 基础信息
+        analysis.put("fileType", fileInfo.fileType);
+        analysis.put("filePath", fileInfo.filePath);
+        analysis.put("analyzedAt", LocalDateTime.now().toString());
+
+        // Persistence Unit
+        List<Map<String, Object>> persistenceUnits = getList(data, "persistenceUnits");
+        analysis.put("persistenceUnitCount", persistenceUnits.size());
+
+        for (Map<String, Object> unit : persistenceUnits) {
+            String transactionType = (String) unit.getOrDefault("transactionType", "unknown");
+            String jtaDataSource = (String) unit.getOrDefault("jtaDataSource", "");
+//            String name = unit.getOrDefault("name", "unknown").toString();
+            Map<String, String> properties = (Map<String, String>) unit.getOrDefault("properties", Map.of());
+
+            if (transactionType.equals("JTA")) {
+                migrationSuggestions.add("⚠️ transaction-type=JTA，容器化建议用 Spring @Transactional 或 Jakarta Transactions");
+            }
+            if (!jtaDataSource.isEmpty()) {
+                migrationSuggestions.add("☁️ 发现 jta-data-source = " + jtaDataSource + "（JNDI），建议改为环境变量注入 (e.g. SPRING_DATASOURCE_URL)");
+            }
+            if (properties.containsKey("hibernate.connection.url") || properties.containsKey("jakarta.persistence.jdbc.url")) {
+                migrationSuggestions.add("🚨 properties 中发现硬编码 JDBC URL / 用户名 / 密码，必须全部外部化到 Kubernetes Secret");
+            }
+        }
+
+        analysis.put("migrationSuggestions", migrationSuggestions);
+        analysis.put("totalSuggestions", migrationSuggestions.size());
+
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, analysis);
+
+        System.out.println("✅ persistence.xml 分析完成 → " + reportFile.getAbsolutePath());
+    }
+
+    @Override
+    public void ejbJarAnalysis(UserDTO userDTO) throws IOException {
+        String outputPath = astMapper.getEjbJarXmlParseOutput(userDTO);
+        File ejbJarJsonFile = new File(outputPath);
+        checkJsonFile(ejbJarJsonFile);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<XmlFileInfo> ejbDataList = objectMapper.readValue(ejbJarJsonFile,
+                new TypeReference<List<XmlFileInfo>>() {});
+
+        if (ejbDataList.isEmpty()) {
+            System.err.println("⚠️ ejb-jar.xml JSON 为空: " + outputPath);
+            return;
+        }
+
+        XmlFileInfo fileInfo = ejbDataList.get(0);
+        Map<String, Object> data = fileInfo.data;
+
+        Path reportPath = ejbJarJsonFile.toPath().getParent();
+        File reportFile = reportPath.resolve("ejb-jar.xml-analysis.json").toFile();
+        Map<String, Object> analysis = new LinkedHashMap<>();
+        List<String> migrationSuggestions = new ArrayList<>();
+
+        // 基础信息
+        analysis.put("fileType", fileInfo.fileType);
+        analysis.put("filePath", fileInfo.filePath);
+        analysis.put("analyzedAt", LocalDateTime.now().toString());
+
+        // Enterprise Beans
+        List<Map<String, Object>> beans = getList(data, "enterpriseBeans");
+        analysis.put("beanCount", beans.size());
+
+        int statefulCount = 0;
+        for (Map<String, Object> bean : beans) {
+            String sessionType = (String) bean.getOrDefault("sessionType", "");
+            if (sessionType.equals("Stateful")) {
+                statefulCount++;
+                migrationSuggestions.add("⚠️ 发现 Stateful Session Bean: " + bean.get("ejbName") + "，容器化风险高，建议改为 Stateless + Redis 状态存储");
+            }
+            List<Map<String, Object>> refs = getList(bean, "ejbRef");
+            if (!refs.isEmpty()) {
+                migrationSuggestions.add("☁️ 发现 ejb-ref（JNDI），建议改为 @Inject 或 CDI");
+            }
+            String transactionType = (String) bean.getOrDefault("transactionType", "");
+            if (transactionType.equals("Bean")) {
+                migrationSuggestions.add("ℹ️ transaction-type=Bean（用户管理事务），建议改为 Container 以利用 Jakarta Transactions");
+            }
+        }
+
+        analysis.put("statefulCount", statefulCount);
+        analysis.put("migrationSuggestions", migrationSuggestions);
+        analysis.put("totalSuggestions", migrationSuggestions.size());
+
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, analysis);
+
+        System.out.println("✅ ejb-jar.xml 分析完成 → " + reportFile.getAbsolutePath());
+    }
 
 
     private void checkJsonFile(File file)

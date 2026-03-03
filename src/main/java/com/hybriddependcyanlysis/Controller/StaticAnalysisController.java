@@ -62,5 +62,17 @@ public class StaticAnalysisController {
         return Result.success();
     }
 
+    public Result persistenceAnalysis(@RequestBody UserDTO userDTO) throws Exception {
+        log.info("persistenceAnalysis:{}", userDTO);
+        staticAnalysisService.persistenceAnalysis(userDTO);
+        return Result.success();
+    }
+
+    public Result ejbJarAnalysis(@RequestBody UserDTO userDTO) throws Exception {
+        log.info("ejbJarAnalysis:{}", userDTO);
+        staticAnalysisService.ejbJarAnalysis(userDTO);
+        return Result.success();
+    }
+
 
 }

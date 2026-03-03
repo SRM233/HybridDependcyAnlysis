@@ -16,4 +16,8 @@ public interface StaticAnalysisService {
     void analyzeWebXml(UserDTO userDTO) throws IOException;
 
     void FileStoreAnalysis( UserDTO userDTO) throws Exception;
+
+    void persistenceAnalysis(UserDTO userDTO) throws IOException;
+
+    void ejbJarAnalysis(UserDTO userDTO) throws IOException;
 }

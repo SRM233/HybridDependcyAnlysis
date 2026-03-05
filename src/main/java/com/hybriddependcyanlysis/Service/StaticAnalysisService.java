@@ -20,4 +20,8 @@ public interface StaticAnalysisService {
     void persistenceAnalysis(UserDTO userDTO) throws IOException;
 
     void ejbJarAnalysis(UserDTO userDTO) throws IOException;
+
+    void pomXmlAnalysis(UserDTO userDTO) throws IOException;
+
+    void facesXmlAnalysis(UserDTO userDTO) throws IOException;
 }

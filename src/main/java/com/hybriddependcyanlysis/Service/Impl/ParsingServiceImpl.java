@@ -697,31 +697,126 @@ public class ParsingServiceImpl implements ParsingService {
         parseGenericXml(output, sourceFolderDAO, "persistence.xml", "persistence.xml", (doc, xmlData) -> {
             List<Map<String, Object>> unitsList = new ArrayList<>();
             NodeList units = doc.getElementsByTagName("persistence-unit");
+
             for (int i = 0; i < units.getLength(); i++) {
                 Element unit = (Element) units.item(i);
                 Map<String, Object> m = new HashMap<>();
-                m.put("name", unit.getAttribute("name"));
+
+                // 1. persistence-unit 的基本属性
+                m.put("name", unit.getAttribute("name"));                    // 强烈建议加上
                 m.put("jtaDataSource", getTagValue(unit, "jta-data-source"));
                 m.put("nonJtaDataSource", getTagValue(unit, "non-jta-data-source"));
+
+                // 2. 处理多个 <class>（关键修复）
+                List<String> classList = new ArrayList<>();
+                NodeList classNodes = unit.getElementsByTagName("class");   // 注意：用 unit 而不是 doc
+                for (int j = 0; j < classNodes.getLength(); j++) {
+                    String className = classNodes.item(j).getTextContent().trim();
+                    if (!className.isEmpty()) {
+                        classList.add(className);
+                    }
+                }
+                m.put("classes", classList);   // 改成复数更清晰
+
+                // 3. 处理 <properties> 里的多个 <property>（关键修复）
+                m.put("properties", parseProperties(unit));
+
                 unitsList.add(m);
             }
+
             xmlData.put("persistenceUnits", unitsList);
         });
+    }
+
+    /**
+     * 解析 persistence-unit 下的 <properties> 标签，返回 Map<name, value>
+     */
+    private Map<String, String> parseProperties(Element persistenceUnit) {
+        Map<String, String> props = new HashMap<>();
+
+        NodeList propContainers = persistenceUnit.getElementsByTagName("properties");
+        if (propContainers.getLength() == 0) {
+            return props;  // 没有 properties 标签就返回空 Map
+        }
+
+        Element propertiesElement = (Element) propContainers.item(0);
+        NodeList propertyNodes = propertiesElement.getElementsByTagName("property");
+
+        for (int i = 0; i < propertyNodes.getLength(); i++) {
+            Element prop = (Element) propertyNodes.item(i);
+            String name = prop.getAttribute("name");
+            String value = prop.getAttribute("value");
+
+            if (!name.isEmpty()) {
+                props.put(name, value != null ? value : "");
+            }
+        }
+        return props;
     }
 
     @Override
     public void parseEjbJarXml(File output, SourceFolderDAO sourceFolderDAO) throws IOException {
         parseGenericXml(output, sourceFolderDAO, "ejb-jar.xml", "ejb-jar.xml", (doc, xmlData) -> {
-            List<Map<String, Object>> ejbsList = new ArrayList<>();
-            NodeList ejbs = doc.getElementsByTagName("session");
-            for (int i = 0; i < ejbs.getLength(); i++) {
-                Element ejb = (Element) ejbs.item(i);
+            List<Map<String, Object>> sessionBeans = new ArrayList<>();
+            NodeList sessions = doc.getElementsByTagName("session");   // 直接找所有 session（enterprise-beans 下面）
+            for (int i = 0; i < sessions.getLength(); i++) {
+                Element session = (Element) sessions.item(i);
                 Map<String, Object> m = new HashMap<>();
-                m.put("name", getTagValue(ejb, "ejb-name"));
-                m.put("sessionType", getTagValue(ejb, "session-type"));
-                ejbsList.add(m);
+                m.put("ejbName", getTagValue(session, "ejb-name"));
+                m.put("sessionType", getTagValue(session, "session-type"));   // Stateful / Stateless
+                m.put("transactionType", getTagValue(session, "transaction-type"));
+                sessionBeans.add(m);
             }
-            xmlData.put("ejbs", ejbsList);
+            xmlData.put("sessionBeans", sessionBeans);
+
+            // ==================== Message Driven Bean ====================
+            List<Map<String, Object>> mdbBeans = new ArrayList<>();
+            NodeList mdbNodes = doc.getElementsByTagName("message-driven");
+            for (int i = 0; i < mdbNodes.getLength(); i++) {
+                Element mdb = (Element) mdbNodes.item(i);
+                Map<String, Object> m = new HashMap<>();
+                m.put("ejbName", getTagValue(mdb, "ejb-name"));
+                m.put("destinationType", getTagValue(mdb, "destination-type"));
+                mdbBeans.add(m);
+            }
+            xmlData.put("messageDrivenBeans", mdbBeans);
+
+            // ==================== 2. Assembly Descriptor（事務 + 安全） ====================
+            List<Map<String, Object>> transactions = new ArrayList<>();
+            NodeList txNodes = doc.getElementsByTagName("container-transaction");
+            for (int i = 0; i < txNodes.getLength(); i++) {
+                Element tx = (Element) txNodes.item(i);
+                Map<String, Object> m = new HashMap<>();
+                m.put("transAttribute", getTagValue(tx, "trans-attribute"));
+                transactions.add(m);
+            }
+            xmlData.put("containerTransactions", transactions);
+
+            // ==================== 3. ejb-client-jar ====================
+            xmlData.put("ejbClientJar", getTagValue(doc, "ejb-client-jar"));
+
+            // ==================== 4. Interceptors（你原本就有的部分，保留） ====================
+            List<Map<String, Object>> interceptors = new ArrayList<>();
+            NodeList interceptorNodes = doc.getElementsByTagName("interceptor");
+            for (int i = 0; i < interceptorNodes.getLength(); i++) {
+                Element interceptor = (Element) interceptorNodes.item(i);
+                Map<String, Object> m = new HashMap<>();
+                m.put("interceptorClass", getTagValue(interceptor, "interceptor-class"));
+                interceptors.add(m);
+            }
+            xmlData.put("interceptors", interceptors);
+
+            // Interceptor Binding
+            List<Map<String, Object>> bindings = new ArrayList<>();
+            NodeList bindingNodes = doc.getElementsByTagName("interceptor-binding");
+            for (int i = 0; i < bindingNodes.getLength(); i++) {
+                Element binding = (Element) bindingNodes.item(i);
+                Map<String, Object> m = new HashMap<>();
+                m.put("ejbName", getTagValue(binding, "ejb-name"));
+                m.put("interceptorClass", getTagValue(binding, "interceptor-class"));
+                bindings.add(m);
+            }
+            xmlData.put("interceptorBindings", bindings);
         });
     }
 

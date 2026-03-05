@@ -445,52 +445,74 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             return;
         }
 
-        XmlFileInfo fileInfo = persistenceDataList.get(0);
-        Map<String, Object> data = fileInfo.data;
-
-        Path reportPath = persistenceJsonFile.toPath().getParent();
-        File reportFile = reportPath.resolve("persistence.xml-analysis.json").toFile();
         Map<String, Object> analysis = new LinkedHashMap<>();
         List<String> migrationSuggestions = new ArrayList<>();
 
+        int totalUnits = 0;
+        int jndiCount = 0;
+        int hardcodedDbCount = 0;
+
         // 基础信息
-        analysis.put("fileType", fileInfo.fileType);
-        analysis.put("filePath", fileInfo.filePath);
+        analysis.put("fileType", persistenceDataList.get(0).fileType);  // 取第一個作為代表
         analysis.put("analyzedAt", LocalDateTime.now().toString());
 
-        // Persistence Unit
-        List<Map<String, Object>> persistenceUnits = getList(data, "persistenceUnits");
-        analysis.put("persistenceUnitCount", persistenceUnits.size());
+        for (XmlFileInfo fileInfo : persistenceDataList) {
+            Map<String, Object> data = fileInfo.data;
+            List<Map<String, Object>> units = getList(data, "persistenceUnits");
+            totalUnits += units.size();
 
-        for (Map<String, Object> unit : persistenceUnits) {
-            String transactionType = (String) unit.getOrDefault("transactionType", "unknown");
-            String jtaDataSource = (String) unit.getOrDefault("jtaDataSource", "");
-            Map<String, String> properties = (Map<String, String>) unit.getOrDefault("properties", Map.of());
+            for (Map<String, Object> unit : units) {
+                String transactionType = (String) unit.getOrDefault("transactionType", "unknown");
+                String jtaDataSource = (String) unit.getOrDefault("jtaDataSource", "");
+                @SuppressWarnings("unchecked")
+                Map<String, String> properties = (Map<String, String>) unit.getOrDefault("properties", Map.of());
 
-            if (transactionType.equals("JTA")) {
-                migrationSuggestions.add("⚠️ transaction-type=JTA，容器化建议用 Spring @Transactional 或 Jakarta Transactions");
-            }
-            if (!jtaDataSource.isEmpty()) {
-                migrationSuggestions.add("☁️ 发现 jta-data-source = " + jtaDataSource + "（JNDI），建议改为环境变量注入 (e.g. SPRING_DATASOURCE_URL)");
-            }
-            // 数据库依赖分析（新增）
-            boolean hasHardcodedDb = properties.keySet().stream()
-                    .anyMatch(k -> k.contains("jdbc.url") || k.contains("username") || k.contains("password"));
-            if (hasHardcodedDb) {
-                migrationSuggestions.add("🚨 properties 中发现硬编码数据库 URL / 用户名 / 密码，必须全部外部化到 Kubernetes Secret");
-            }
-            String provider = (String) unit.getOrDefault("provider", "unknown");
-            if (provider.contains("hibernate") && provider.compareTo("5.0") < 0) {
-                migrationSuggestions.add("⚠️ provider = " + provider + "（旧版本 Hibernate），建议升级到 6.x+ 以兼容容器");
+                // 1. JTA 事務
+                if (transactionType.equals("JTA")) {
+                    migrationSuggestions.add("⚠️ transaction-type=JTA，容器化建議用 Spring @Transactional 或 Jakarta Transactions");
+                }
+
+                // 2. JNDI 資料源（最重要！）
+                if (!jtaDataSource.isEmpty()) {
+                    jndiCount++;
+                    migrationSuggestions.add("☁️ 發現 JNDI 資料源 (" + jtaDataSource + ")，建議改為環境變數注入 (e.g. SPRING_DATASOURCE_URL)");
+                }
+
+                // 3. 硬編碼資料庫資訊
+                boolean hasHardcodedDb = properties.keySet().stream()
+                        .anyMatch(k -> k.contains("jdbc.url") || k.contains("username") || k.contains("password"));
+                if (hasHardcodedDb) {
+                    hardcodedDbCount++;
+                    migrationSuggestions.add("🚨 properties 中發現硬編碼資料庫 URL / 用戶名 / 密碼，必須全部外部化到 Kubernetes Secret");
+                }
+
+                // 4. schema-generation 自動建表（生產環境危險）
+                String schemaAction = (String) properties.getOrDefault("javax.persistence.schema-generation.database.action", "");
+                if (schemaAction.contains("drop-and-create")) {
+                    migrationSuggestions.add("⚠️ schema-generation.database.action = drop-and-create，生產環境極度危險，建議改為 none 或 validate");
+                }
+
+                // 5. provider 版本（可選）
+                String provider = (String) unit.getOrDefault("provider", "unknown");
+                if (provider.contains("hibernate") && provider.compareTo("5.0") < 0) {
+                    migrationSuggestions.add("⚠️ provider = " + provider + "（舊版本 Hibernate），建議升級到 6.x+ 以兼容容器");
+                }
             }
         }
 
+        // ====================== 最終報告 ======================
+        analysis.put("totalPersistenceUnits", totalUnits);
+        analysis.put("jndiDataSourceCount", jndiCount);
+        analysis.put("hardcodedDbConfigCount", hardcodedDbCount);
         analysis.put("migrationSuggestions", migrationSuggestions);
         analysis.put("totalSuggestions", migrationSuggestions.size());
 
+        Path reportPath = persistenceJsonFile.toPath().getParent();
+        File reportFile = reportPath.resolve("persistence-analysis-report.json").toFile();
+
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, analysis);
 
-        System.out.println("✅ persistence.xml 分析完成 → " + reportFile.getAbsolutePath());
+        System.out.println("✅ persistence.xml 分析完成！報告生成 → " + reportFile.getAbsolutePath());
     }
     @Override
     public void ejbJarAnalysis(UserDTO userDTO) throws IOException {
@@ -521,7 +543,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         analysis.put("analyzedAt", LocalDateTime.now().toString());
 
         // Enterprise Beans
-        List<Map<String, Object>> beans = getList(data, "enterpriseBeans");
+        List<Map<String, Object>> beans = getList(data, "sessionBeans");
         analysis.put("beanCount", beans.size());
 
         int statefulCount = 0;
@@ -545,6 +567,41 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             }
         }
 
+        List<Map<String, Object>> mdbBeans = getList(data, "messageDrivenBeans");
+        analysis.put("mdbBeanCount", mdbBeans.size());
+
+        for (Map<String, Object> mdb : mdbBeans) {
+            String ejbName = (String) mdb.getOrDefault("ejbName", "unknown");
+            migrationSuggestions.add("📨 發現 Message Driven Bean: " + ejbName + "，建議確認 JMS 配置是否遷移到 Kafka 或 Spring JMS");
+        }
+
+        List<Map<String, Object>> interceptors = getList(data, "interceptors");
+        List<Map<String, Object>> bindings = getList(data, "interceptorBindings");
+
+        analysis.put("interceptorCount", interceptors.size());
+        analysis.put("interceptorBindings", bindings);
+
+        if (interceptors.size() > 0) {
+            migrationSuggestions.add("📌 發現 " + interceptors.size() + " 個 Interceptor，建議遷移到 CDI Interceptor（更適合容器環境，減少 XML 配置）");
+        }
+
+        List<Map<String, Object>> transactions = getList(data, "containerTransactions");
+        analysis.put("transactionCount", transactions.size());
+
+        for (Map<String, Object> tx : transactions) {
+            String transAttribute = (String) tx.getOrDefault("transAttribute", "unknown");
+            if (transAttribute.equals("NotSupported")) {
+                migrationSuggestions.add("⚠️ trans-attribute=NotSupported，可能導致事務不一致，建議確認容器事務管理器");
+            }
+        }
+
+        // ejbClientJar (使用你的解析结果中的 "ejbClientJar")
+        String ejbClientJar = (String) data.getOrDefault("ejbClientJar", "");
+        analysis.put("ejbClientJar", ejbClientJar);
+        if (!ejbClientJar.isEmpty()) {
+            migrationSuggestions.add("ℹ️ 發現 ejb-client-jar = " + ejbClientJar + "，容器化建議移除或改成 Maven 依賴");
+        }
+
         analysis.put("statefulCount", statefulCount);
         analysis.put("migrationSuggestions", migrationSuggestions);
         analysis.put("totalSuggestions", migrationSuggestions.size());
@@ -553,6 +610,143 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         System.out.println("✅ ejb-jar.xml 分析完成 → " + reportFile.getAbsolutePath());
     }
+
+    @Override
+    public void pomXmlAnalysis(UserDTO userDTO) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        String pomParseOutputPath = astMapper.getPomXmlParseOutput(userDTO);
+
+        File pomXmlFile = new File(pomParseOutputPath);
+
+        checkJsonFile(pomXmlFile);
+
+        Path reportPath = pomXmlFile.toPath().getParent();
+        File analysisReportFile = reportPath.resolve("pom.xml-analysis.json").toFile();
+
+        List<XmlFileInfo> xmlFileInfoList = objectMapper.readValue(pomXmlFile, new TypeReference<List<XmlFileInfo>>() {});
+
+        if (xmlFileInfoList.isEmpty()) {
+            throw new RuntimeException("pomXmlAnalysis 为空");
+        }
+
+        Map<String, Object> analysis = new LinkedHashMap<>();
+        analysis.put("totalPomFiles", xmlFileInfoList.size());
+        analysis.put("analyzedAt", LocalDateTime.now().toString());
+
+        List<String> migrationSuggestions = new ArrayList<>();
+
+        // 全局汇总变量
+        List<String> allJavaVersions = new ArrayList<>();
+        List<String> allDependencies = new ArrayList<>();
+        List<String> allPlugins = new ArrayList<>();
+        int totalProfileCount = 0;
+        boolean hasLegacyServerDep = false;
+        boolean hasLowJavaVersion = false;
+
+        // 遍历所有 pom.xml 文件
+        for (XmlFileInfo xmlFileInfo : xmlFileInfoList) {
+            Map<String, Object> data = xmlFileInfo.data;
+
+            // 收集 javaVersion
+            String javaVersion = (String) data.getOrDefault("javaVersion", "unknown");
+            allJavaVersions.add(javaVersion);
+            if (!javaVersion.equals("unknown") && Integer.parseInt(javaVersion) < 11) {
+                hasLowJavaVersion = true;
+            }
+
+            // 收集 dependencies 并检查传统服务器依赖
+            @SuppressWarnings("unchecked")
+            List<String> deps = (List<String>) data.getOrDefault("dependencies", List.of());
+            allDependencies.addAll(deps);
+            if (deps.stream().anyMatch(d -> d.contains("weblogic") || d.contains("websphere") || d.contains("glassfish"))) {
+                hasLegacyServerDep = true;
+            }
+
+            // 收集 plugins
+            @SuppressWarnings("unchecked")
+            List<String> plugins = (List<String>) data.getOrDefault("plugins", List.of());
+            allPlugins.addAll(plugins);
+
+            // 收集 profileCount
+            int profileCount = (int) data.getOrDefault("profileCount", 0);
+            totalProfileCount += profileCount;
+        }
+
+        // 生成迁移建议
+//        if (hasLowJavaVersion) {
+//            migrationSuggestions.add("⚠️ 检测到 Java 版本过低（低于 11），建议升级到 Java 17+ 以支持现代容器（如 Liberty/WildFly）");
+//        }
+//        if (hasLegacyServerDep) {
+//            migrationSuggestions.add("⚠️ 检测到传统应用服务器依赖（如 WebLogic/WebSphere），建议移除并迁移到轻量服务器");
+//        }
+//        if (totalProfileCount > 0) {
+//            migrationSuggestions.add("ℹ️ 检测到 " + totalProfileCount + " 个 profile，建议将多环境配置外部化到 Kubernetes ConfigMap");
+//        }
+//        if (allDependencies.stream().anyMatch(d -> d.contains("jakarta.jakartaee-api") && d.contains("1.0"))) {
+//            migrationSuggestions.add("⚠️ 检测到旧版 Jakarta EE API 依赖，建议升级到 10.0+ 以兼容容器");
+//        }
+
+        // 汇总到分析报告
+        analysis.put("allJavaVersions", allJavaVersions);
+        analysis.put("allDependencies", allDependencies);
+        analysis.put("allPlugins", allPlugins);
+        analysis.put("totalProfileCount", totalProfileCount);
+        analysis.put("migrationSuggestions", migrationSuggestions);
+        analysis.put("totalSuggestions", migrationSuggestions.size());
+
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(analysisReportFile, analysis);
+
+        System.out.println("✅ pom.xml 整合分析完成！报告生成 → " + analysisReportFile.getAbsolutePath());
+    }
+
+    @Override
+    public void facesXmlAnalysis(UserDTO userDTO) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        String facesXmlParseOutputPath = astMapper.getFacesXmlParseOutput(userDTO);
+
+        File facesJsonFile = new File(facesXmlParseOutputPath);
+        checkJsonFile(facesJsonFile);
+        Path reportPath = facesJsonFile.toPath().getParent();
+        File analysisReportFile = reportPath.resolve("faces-config.xml-analysis.json").toFile();
+
+        List<XmlFileInfo> dataList = objectMapper.readValue(facesJsonFile,
+                new TypeReference<List<XmlFileInfo>>() {});
+
+        if (dataList.isEmpty()) {
+            System.err.println("⚠️ faces-config.xml JSON 为空: " + facesXmlParseOutputPath);
+            return;
+        }
+
+        Map<String, Object> analysis = new LinkedHashMap<>();
+        List<String> suggestions = new ArrayList<>();
+
+        int sessionScopeCount = 0;
+
+        for (XmlFileInfo fileInfo : dataList) {
+            Map<String, Object> data = fileInfo.data;
+            List<Map<String, Object>> managedBeans = (List<Map<String, Object>>) data.getOrDefault("managedBeans", List.of());
+
+            for (Map<String, Object> bean : managedBeans) {
+                String scope = (String) bean.getOrDefault("scope", "unknown");
+                if (scope.equals("session") || scope.equals("application")) {
+                    sessionScopeCount++;
+                    suggestions.add("⚠️ 發現 scope=" + scope + " 的 managed-bean (" + bean.get("name") + ")，容器化風險高，建議改為 request/view scope 或遷移到 CDI (@RequestScoped)");
+                }
+            }
+        }
+
+        analysis.put("sessionScopeCount", sessionScopeCount);
+        analysis.put("migrationSuggestions", suggestions);
+        analysis.put("totalSuggestions", suggestions.size());
+
+        File reportFile = reportPath.resolve("faces-config-analysis-report.json").toFile();
+
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, analysis);
+
+        System.out.println("✅ faces-config.xml 分析完成 → " + reportFile.getAbsolutePath());
+    }
+
 
 
     private void checkJsonFile(File file)

@@ -62,17 +62,35 @@ public class StaticAnalysisController {
         return Result.success();
     }
 
+    @PostMapping("/persistenceAnalysis")
     public Result persistenceAnalysis(@RequestBody UserDTO userDTO) throws Exception {
         log.info("persistenceAnalysis:{}", userDTO);
         staticAnalysisService.persistenceAnalysis(userDTO);
         return Result.success();
     }
 
+    @PostMapping("/ejbJarAnalysis")
     public Result ejbJarAnalysis(@RequestBody UserDTO userDTO) throws Exception {
         log.info("ejbJarAnalysis:{}", userDTO);
         staticAnalysisService.ejbJarAnalysis(userDTO);
         return Result.success();
     }
+
+    @PostMapping("/pomXmlAnalysis")
+    public Result pomXmlAnalysis(@RequestBody UserDTO userDTO) throws Exception {
+        log.info("ejbJarAnalysis:{}", userDTO);
+        staticAnalysisService.pomXmlAnalysis(userDTO);
+        return Result.success();
+    }
+
+    @PostMapping("/facesXmlAnalysis")
+    public Result facesXmlAnalysis(@RequestBody UserDTO userDTO) throws Exception {
+        log.info("facesXmlAnalysis:{}", userDTO);
+        staticAnalysisService.facesXmlAnalysis(userDTO);
+        return Result.success();
+    }
+
+
 
 
 }

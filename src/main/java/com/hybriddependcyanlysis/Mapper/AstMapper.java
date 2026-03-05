@@ -74,4 +74,10 @@ public interface AstMapper {
 
     @Select("select path from hybridanalysis.ejb_jar_xml_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
     String getEjbJarXmlParseOutput(UserDTO userDTO);
+
+    @Select("select path from hybridanalysis.pom_xml_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
+    String getPomXmlParseOutput(UserDTO userDTO);
+
+    @Select("select path from hybridanalysis.faces_config_xml_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
+    String getFacesXmlParseOutput(UserDTO userDTO);
 }

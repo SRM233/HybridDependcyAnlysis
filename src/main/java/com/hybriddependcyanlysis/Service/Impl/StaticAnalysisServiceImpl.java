@@ -42,52 +42,11 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             "servletMapping"
     );
 
-    @Override
-    @Transactional
-    public HashMap<String, Integer> dependencyCounting(Integer userId, Integer sourceFolderId) {
-
-        UserDTO userDTO = new UserDTO();
-        userDTO.setId(userId);
-        userDTO.setSourceFolderId(sourceFolderId);
-
-        JavaFilesParseDAO javaFilesParseDAO = astMapper.getOutPut(userDTO);
-
-        List<HashMap<String, Object>> resultList = staticAnalysisMapper.getDependencyCountGroupByType(javaFilesParseDAO);
-
-        HashMap<String, Integer> resultMap = new HashMap<>();
-        for (Map<String, Object> row : resultList) {
-            String type = (String) row.get("dependency_type");
-            Integer count = ((Number) row.get("calledNums")).intValue(); // 确保 SQL 中别名是 calledNums
-            resultMap.put(type, count);
-        }
-
-        return resultMap;
-    }
-
-    @Override
-    @Transactional
-    public HashMap<String, String> ELAnalysis(UserDTO userDTO) {
-        JspParseOutPutDAO jspParseOutPutDAO = astMapper.getJspParseOutput(userDTO);
-
-        List<HashMap<String, Object>> temp = staticAnalysisMapper.getELexpression(jspParseOutPutDAO);
-
-        log.info("EL Analysis");
-
-        HashMap<String, String> resultMap = new HashMap<>();
-        for (Map<String, Object> row : temp) {
-            String pageName = (String) row.get("pageName");
-            String expression = (String) row.get("expression"); // 确保 SQL 中别名是 calledNums
-            resultMap.put(pageName, expression);
-        }
-
-        return resultMap;
-
-    }
 
     @Override
     public void AnnotationCount(UserDTO userDTO) throws IOException {
         // get java parse output path
-        ObjectMapper objectMapper = new ObjectMapper();   // 需要 import com.fasterxml.jackson.databind.ObjectMapper;
+        ObjectMapper objectMapper = new ObjectMapper();   //
         String outputPath = astMapper.getJavaFilesParseOutput(userDTO);
 
         File jsonFile = new File(outputPath);
@@ -549,10 +508,14 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         int statefulCount = 0;
         for (Map<String, Object> bean : beans) {
             String sessionType = (String) bean.getOrDefault("sessionType", "");
+
+            //Checking session beans, find Stateful session annotate and give suggestion
             if (sessionType.equals("Stateful")) {
                 statefulCount++;
                 migrationSuggestions.add("⚠️ 发现 Stateful Session Bean: " + bean.get("ejbName") + "，容器化风险高，建议改为 Stateless + Redis 状态存储");
             }
+
+            //Container compatibility: checking JNDI data source
             List<Map<String, Object>> refs = getList(bean, "ejbRef");
             if (!refs.isEmpty()) {
                 migrationSuggestions.add("☁️ 发现 ejb-ref（JNDI），建议改为 @Inject 或 CDI");
@@ -753,7 +716,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
     {
 
         if (!file.exists()) {
-            throw new RuntimeException("文件不存在: " + file);
+            throw new RuntimeException("文件不存在: " + file.getAbsolutePath());
         }
 
         if (file.length() == 0) {

@@ -9,16 +9,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.hybriddependcyanlysis.Mapper.AstMapper;
-import com.hybriddependcyanlysis.Mapper.IngestMapper;
 import com.hybriddependcyanlysis.POJO.AnalysisResult;
-import com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO;
+import com.hybriddependcyanlysis.POJO.DAO.AnalysisResultsDAO;
 import com.hybriddependcyanlysis.POJO.DAO.SourceFolderDAO;
-import com.hybriddependcyanlysis.Service.JsonFileService;
 import com.hybriddependcyanlysis.Service.ParsingService;
 
 
 import org.jsoup.Jsoup;
-import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,10 +26,8 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import spoon.Launcher;
-import spoon.compiler.ModelBuildingException;
 import spoon.reflect.CtModel;
 import spoon.reflect.code.CtConstructorCall;
-import spoon.reflect.code.CtExpression;
 import spoon.reflect.code.CtInvocation;
 import spoon.reflect.cu.CompilationUnit;
 import spoon.reflect.declaration.*;
@@ -44,7 +39,6 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -91,9 +85,9 @@ public class ParsingServiceImpl implements ParsingService {
                     .forEach(p -> {
                         try {
                             parseJavaFile(p.toFile());  // 只传 DAO，不再传 writer
-                        } catch (Exception e) {
-                            // 单个文件失败不影响整体
-                        }
+                         } catch (Exception e) {
+                             System.err.println("解析Java文件失败: " + p + " - " + e.getMessage());
+                         }
                     });
         }
 
@@ -169,7 +163,9 @@ public class ParsingServiceImpl implements ParsingService {
             for (CtType<?> type : model.getAllTypes()) {
                 parseClass(type);   // 不再传 writer
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            System.err.println("解析Java文件失败（Spoon）: " + javaFile.getAbsolutePath() + " - " + e.getMessage());
+        }
 
 
     }
@@ -330,7 +326,7 @@ public class ParsingServiceImpl implements ParsingService {
                 }
 
             } catch (Exception e) {
-                // 防止单个调用崩溃整个解析
+                System.err.println("检测调用问题时出错: " + e.getMessage());
             }
         });
     }
@@ -406,7 +402,7 @@ public class ParsingServiceImpl implements ParsingService {
                         break;
                 }
             } catch (Exception e) {
-                // 防止崩溃
+                System.err.println("检测构造器问题时出错: " + e.getMessage());
             }
         });
     }
@@ -843,28 +839,26 @@ public class ParsingServiceImpl implements ParsingService {
         parseGenericXml(output, sourceFolderDAO, "application.xml", "application.xml", (doc, xmlData) -> {
             List<Map<String, Object>> modulesList = new ArrayList<>();
             NodeList modules = doc.getElementsByTagName("module");
-            Map<String, Object> moduleMap = new HashMap<>();
             // 【新增】收集 Modules
             for (int i = 0; i < modules.getLength(); i++) {
-                    Element m = (Element) modules.item(i);
+                Element module = (Element) modules.item(i);
+                Map<String, Object> moduleMap = new HashMap<>();
+                String type = "";
+                if (module.getElementsByTagName("web").getLength() > 0) type = "web";
+                else if (module.getElementsByTagName("ejb").getLength() > 0) type = "ejb";
+                else if (module.getElementsByTagName("java").getLength() > 0) type = "java";
+                else type = "unknown";
 
-                    Element module = (Element) modules.item(i);
-                    String type = "";
-                    if (module.getElementsByTagName("web").getLength() > 0) type = "web";
-                    else if (module.getElementsByTagName("ejb").getLength() > 0) type = "ejb";
-                    else if (module.getElementsByTagName("java").getLength() > 0) type = "java";
-                    else type = "unknown";
+                String uri = "";
+                if ("web".equals(type)) uri = getTagValue(module, "web-uri");
+                else if ("ejb".equals(type)) uri = getTagValue(module, "ejb");
+                else if ("java".equals(type)) uri = getTagValue(module, "java");
 
-                    String uri = "";
-                    if ("web".equals(type)) uri = getTagValue(module, "web-uri");
-                    else if ("ejb".equals(type)) uri = getTagValue(module, "ejb");
-                    else if ("java".equals(type)) uri = getTagValue(module, "java");
-
-                    moduleMap.put("type", type);
-                    moduleMap.put("uri", uri);
-                    modulesList.add(moduleMap);
-                }
-                xmlData.put("modules", modulesList);
+                moduleMap.put("type", type);
+                moduleMap.put("uri", uri);
+                modulesList.add(moduleMap);
+            }
+            xmlData.put("modules", modulesList);
         });
     }
 
@@ -930,6 +924,7 @@ public class ParsingServiceImpl implements ParsingService {
 
                 jsfInfo.beans.addAll(beans);
                 jsfFiles.add(jsfInfo);
+                analysisResult.getJsfFiles().add(jsfInfo);
 
             } catch (Exception e) {
                 System.out.println("JSF 解析失败: " + file.getName() + " → " + e.getMessage());
@@ -955,7 +950,7 @@ public class ParsingServiceImpl implements ParsingService {
         }
 
         // 创建 output 目录
-        File outputFolder = new File(rootPath + "/output");
+        File outputFolder = new File(rootPath, OutputPath.OUTPUT_BASE_DIR);
         if (!outputFolder.exists()) {
             if (!outputFolder.mkdirs()) {
                 throw new IOException("无法创建 output 目录: " + outputFolder.getAbsolutePath());
@@ -963,26 +958,27 @@ public class ParsingServiceImpl implements ParsingService {
         }
 
         // 1. 定义所有报告文件路径
-        File analysisOutput     = new File(OutputPath.JAVA_PARSE_RESULT_PATH);
-        File errorLog           = new File(OutputPath.JAVA_PARSE_ERROR_LOG_PATH);
-        File jspOutput          = new File(OutputPath.JSP_PARSE_RESULT_PATH);
-        File jspError           = new File(OutputPath.JSP_PARSE_ERROR_LOG_PATH);
-        File webXmlOutput       = new File(OutputPath.WEB_XML_PARSE_RESULT_PATH);
-        File persistenceXmlOutput = new File(OutputPath.PERSISTENCE_PARSE_RESULT_PATH);
-        File ejbJarXmlOutput    = new File(OutputPath.EJB_JAR_PARSE_RESULT_PATH);
-        File facesConfigXmlOutput = new File(OutputPath.FACES_CONFIG_PARSE_RESULT_PATH);
-        File applicationXmlOutput = new File(OutputPath.EAR_APPLICATION_PARSE_RESULT_PATH);
-        File jsfOutput          = new File(OutputPath.JSF_PARSE_RESULT_PATH);
+        File analysisOutput     = new File(outputFolder, OutputPath.JAVA_PARSE_RESULT_PATH);
+        File errorLog           = new File(outputFolder, OutputPath.JAVA_PARSE_ERROR_LOG_PATH);
+        File jspOutput          = new File(outputFolder, OutputPath.JSP_PARSE_RESULT_PATH);
+        File jspError           = new File(outputFolder, OutputPath.JSP_PARSE_ERROR_LOG_PATH);
+        File webXmlOutput       = new File(outputFolder, OutputPath.WEB_XML_PARSE_RESULT_PATH);
+        File persistenceXmlOutput = new File(outputFolder, OutputPath.PERSISTENCE_PARSE_RESULT_PATH);
+        File ejbJarXmlOutput    = new File(outputFolder, OutputPath.EJB_JAR_PARSE_RESULT_PATH);
+        File facesConfigXmlOutput = new File(outputFolder, OutputPath.FACES_CONFIG_PARSE_RESULT_PATH);
+        File applicationXmlOutput = new File(outputFolder, OutputPath.EAR_APPLICATION_PARSE_RESULT_PATH);
+        File jsfOutput          = new File(outputFolder, OutputPath.JSF_PARSE_RESULT_PATH);
 
-//        analysisResult.getJavaClasses().clear();
-//        if (analysisResult.getJsfFiles() != null) analysisResult.getJsfFiles().clear();
-//        if (analysisResult.getXmlConfigs() != null) analysisResult.getXmlConfigs().clear();
-//        analysisResult.getIssues().clear();
-//        analysisResult.setTotalJavaFiles(0);
-//        analysisResult.setTotalXhtmlFiles(0);
-//        analysisResult.setTotalXmlFiles(0);
-//        analysisResult.setTotalIssues(0);
-//        allIssues.clear();
+        analysisResult.getJavaClasses().clear();
+        if (analysisResult.getJsfFiles() != null) analysisResult.getJsfFiles().clear();
+        if (analysisResult.getXmlConfigs() != null) analysisResult.getXmlConfigs().clear();
+        analysisResult.getIssues().clear();
+        analysisResult.setTotalJavaFiles(0);
+        analysisResult.setTotalXhtmlFiles(0);
+        analysisResult.setTotalXmlFiles(0);
+        analysisResult.setTotalIssues(0);
+        allIssues.clear();
+        jsfFiles.clear();
 
 // 重新初始化（防止 null）
 //        if (analysisResult.getXmlConfigs() == null) {
@@ -1012,9 +1008,6 @@ public class ParsingServiceImpl implements ParsingService {
 
         // 4. 统一生成 JSON + 存数据库
 
-
-
-//        generateAndSaveResult(sourceFolderDAO);
 
         // 5. 打印完成信息（可返回给前端）
         System.out.println("完整静态分析完成！");
@@ -1090,77 +1083,6 @@ public class ParsingServiceImpl implements ParsingService {
     }
 
 
-    private void generateAndSaveResult(SourceFolderDAO sourceFolderDAO) throws IOException {
-        analysisResult.setProjectPath(sourceFolderDAO.getDirPath());
-        analysisResult.setAnalysisTime(LocalDateTime.now());
-
-        // 同步核心数据（javaClasses 和 issues 需要 set，因为它们是外部列表）
-        analysisResult.setJavaClasses(javaClasses);
-//        jsonFileService.generateJsonArray(javaClasses);
-        analysisResult.setIssues(allIssues);
-        analysisResult.setDependencyGraph(dependencyGraph);
-
-        // xmlConfigs 和 jsfFiles 已经在解析方法里填充了，不需要 set（它们是对象引用）
-
-        // 重新计算统计（最准确）
-        analysisResult.setTotalJavaFiles(javaClasses.size());
-        analysisResult.setTotalXhtmlFiles(analysisResult.getJsfFiles() != null ? analysisResult.getJsfFiles().size() : 0);
-        analysisResult.setTotalIssues(allIssues.size());
-
-        int totalXml = 0;
-        if (analysisResult.getXmlConfigs() != null) {
-            for (List<XmlFileInfo> list : analysisResult.getXmlConfigs().values()) {
-                totalXml += list.size();
-            }
-        }
-        analysisResult.setTotalXmlFiles(totalXml);
-
-        // 确保 output 目录存在
-        File outputDir = new File(sourceFolderDAO.getDirPath() + "\\" + OutputPath.OUTPUT_BASE_DIR);
-        if (!outputDir.exists() && !outputDir.mkdirs()) {
-            throw new IOException("无法创建输出目录: " + outputDir.getAbsolutePath());
-        }
-
-        // 生成 JSON 文件
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());   // 修复时间格式
-        mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        File jsonFile = new File(outputDir, sourceFolderDAO.getId() + "_" + System.currentTimeMillis() + ".json");
-        mapper.writeValue(jsonFile, analysisResult);
-        System.out.println("JSON 文件生成成功: " + jsonFile.getAbsolutePath());
-
-        // 转 DAO 并存数据库（你的代码保持不变）
-        AnalysisResultDAO dao = new AnalysisResultDAO();
-        dao.setSourceFolderId(sourceFolderDAO.getId());
-        dao.setUserId(sourceFolderDAO.getUserId());
-        dao.setProjectPath(analysisResult.getProjectPath());
-        dao.setAnalysisTime(LocalDateTime.now());
-
-        dao.setDependencyGraph(mapper.writeValueAsString(analysisResult.getDependencyGraph()));
-        dao.setJavaClasses(mapper.writeValueAsString(analysisResult.getJavaClasses()));
-        dao.setXmlConfigs(mapper.writeValueAsString(analysisResult.getXmlConfigs()));
-        dao.setJsfFiles(mapper.writeValueAsString(analysisResult.getJsfFiles()));
-        dao.setIssues(mapper.writeValueAsString(analysisResult.getIssues()));
-
-        dao.setTotalJavaFiles(analysisResult.getTotalJavaFiles());
-        dao.setTotalXhtmlFiles(analysisResult.getTotalXhtmlFiles());
-        dao.setTotalXmlFiles(analysisResult.getTotalXmlFiles());
-        dao.setTotalIssues(analysisResult.getTotalIssues());
-
-        // 插入或更新
-        AnalysisResultDAO existing = astMapper.getAnalysisResultBySourceFolderId(sourceFolderDAO.getId());
-        if (existing == null) {
-            dao.setCreateTime(LocalDateTime.now());
-            dao.setUpdateTime(LocalDateTime.now());
-            astMapper.insertAnalysisResult(dao);
-        } else {
-            dao.setUpdateTime(LocalDateTime.now());
-            dao.setId(existing.getId());
-            astMapper.updateAnalysisResult(dao);
-        }
-
-        System.out.println("数据库插入/更新完成，source_folder_id: " + sourceFolderDAO.getId());
-    }
 
 
     /**
@@ -1227,6 +1149,9 @@ public class ParsingServiceImpl implements ParsingService {
 
             xmlFileInfos.add(xmlFileInfo);
         }
+
+        // 3. 存储到 analysisResult.xmlConfigs
+        analysisResult.getXmlConfigs().computeIfAbsent(xmlType, k -> new ArrayList<>()).addAll(xmlFileInfos);
 
         // 2. 真正使用 outputJsonFile 來寫入結果
         // 確保父目錄存在

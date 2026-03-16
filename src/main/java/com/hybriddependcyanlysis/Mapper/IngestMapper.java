@@ -1,7 +1,6 @@
 package com.hybriddependcyanlysis.Mapper;
 
 
-import com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO;
 import com.hybriddependcyanlysis.POJO.DAO.SourceFolderDAO;
 
 import org.apache.ibatis.annotations.Delete;

@@ -20,21 +20,21 @@ public class StaticAnalysisController {
     @Autowired
     private StaticAnalysisService staticAnalysisService;
 
-    @GetMapping("/dependencyCount")
-    public Result<HashMap<String, Integer>> dependencyCount(Integer userId, Integer sourceFolderId)
-    {
-        HashMap<String, Integer> count = staticAnalysisService.dependencyCounting(userId, sourceFolderId);
-        return Result.succes(count);
-    }
-
-    @GetMapping("/ELExpressionAnalysis")
-    public Result ELexpressionAnalysis(@RequestBody UserDTO userDTO)
-    {
-
-        log.info("ELExpressionAnalysis:{}", userDTO);
-        HashMap<String, String> el =  staticAnalysisService.ELAnalysis(userDTO);
-        return Result.success(el);
-    }
+//    @GetMapping("/dependencyCount")
+//    public Result<HashMap<String, Integer>> dependencyCount(Integer userId, Integer sourceFolderId)
+//    {
+//        HashMap<String, Integer> count = staticAnalysisService.dependencyCounting(userId, sourceFolderId);
+//        return Result.succes(count);
+//    }
+//
+//    @GetMapping("/ELExpressionAnalysis")
+//    public Result ELexpressionAnalysis(@RequestBody UserDTO userDTO)
+//    {
+//
+//        log.info("ELExpressionAnalysis:{}", userDTO);
+//        HashMap<String, String> el =  staticAnalysisService.ELAnalysis(userDTO);
+//        return Result.success(el);
+//    }
 
     @PostMapping("/annotationAnalysis")
     public Result AnnotationAnalysis(@RequestBody UserDTO userDTO)

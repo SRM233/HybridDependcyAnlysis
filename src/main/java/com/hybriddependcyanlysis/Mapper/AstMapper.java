@@ -1,6 +1,6 @@
 package com.hybriddependcyanlysis.Mapper;
 
-import com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO;
+import com.hybriddependcyanlysis.POJO.DAO.AnalysisResultsDAO;
 import com.hybriddependcyanlysis.POJO.DAO.JavaFilesParseDAO;
 import com.hybriddependcyanlysis.POJO.DAO.AstSchema.ClassDAO;
 import com.hybriddependcyanlysis.POJO.DAO.AstSchema.DependencyDAO;
@@ -57,11 +57,11 @@ public interface AstMapper {
 
     void insertTaglib(TagliDAO taglib);
 
-    AnalysisResultDAO getAnalysisResultBySourceFolderId(Integer id);
+    AnalysisResultsDAO getAnalysisResultBySourceFolderId(Integer id);
 
-    void insertAnalysisResult(AnalysisResultDAO dao);
+    void insertAnalysisResult(AnalysisResultsDAO dao);
 
-    void updateAnalysisResult(AnalysisResultDAO dao);
+    void updateAnalysisResult(AnalysisResultsDAO dao);
 
     @Select("select path from hybridanalysis.java_files_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
     String getJavaFilesParseOutput(UserDTO userDTO);

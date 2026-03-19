@@ -160,6 +160,9 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             analysisReportMapper.insertResult(analysisResultDAO);
         }
 
+        analysisResultDAO.setUpdateTime(LocalDateTime.now());
+        analysisReportMapper.updateResult(analysisResultDAO);
+
 
 //        System.out.println("\n📁 详细统计报告已保存 → " + reportFile.getAbsolutePath());
 

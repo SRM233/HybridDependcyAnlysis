@@ -8,4 +8,6 @@ public interface AnalysisReportMapper {
     AnalysisResultDAO getAnalysisResult(AnalysisResultDAO analysisResultDTO);
 
     void insertResult(AnalysisResultDAO analysisResultDAO);
+
+    void updateResult(AnalysisResultDAO analysisResultDAO);
 }

@@ -8,6 +8,32 @@
         insert into hybridanalysis.analysis_results (name, create_time, update_time, user_id, source_folder_id, parse_output_id)
         VALUES (#{name}, #{createTime},#{updateTime},#{userId},#{sourceFolderId},#{parseOutputId})
     </insert>
+    <update id="updateResult">
+        update hybridanalysis.analysis_results
+        <set>
+            <if test="name != null and name != ''">
+                name = #{name},
+            </if>
+            <if test="createTime != null">
+                create_time = #{createTime},
+            </if>
+            <if test="updateTime != null">
+                update_time = #{updateTime},
+            </if>
+            <if test="userId != null">
+                user_id = #{userId},
+            </if>
+            <if test="sourceFolderId != null">
+                source_folder_id = #{sourceFolderId},
+            </if>
+            <if test="parseOutputId != null">
+                parse_output_id = #{parseOutputId},
+            </if>
+            <if test="path != null">
+                path = #{path},
+            </if>
+        </set>
+    </update>
 
     <select id="getAnalysisResult" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO">
         SELECT * FROM hybridanalysis.analysis_results

@@ -1,7 +1,7 @@
 package com.hybriddependcyanlysis.Controller;
 
 import Common.Result;
-import com.hybriddependcyanlysis.POJO.DAO.AnalysisResultsDAO;
+import com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,7 +14,7 @@ public class AnalysisReportController {
 
 
     @GetMapping("/AnnotationReport")
-    public Result<AnalysisResultsDAO> getAnnotationReport()
+    public Result<AnalysisResultDAO> getAnnotationReport()
     {
         return null;
     }

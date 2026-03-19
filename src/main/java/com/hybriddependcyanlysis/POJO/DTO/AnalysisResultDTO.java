@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class AnalysisReportDTO {
+public class AnalysisResultDTO {
     private Integer userId;
     private Integer sourceFolderId;
 

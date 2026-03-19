@@ -1,6 +1,6 @@
 package com.hybriddependcyanlysis.Mapper;
 
-import com.hybriddependcyanlysis.POJO.DAO.AnalysisResultsDAO;
+import com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO;
 import com.hybriddependcyanlysis.POJO.DAO.JavaFilesParseDAO;
 import com.hybriddependcyanlysis.POJO.DAO.AstSchema.ClassDAO;
 import com.hybriddependcyanlysis.POJO.DAO.AstSchema.DependencyDAO;
@@ -57,11 +57,11 @@ public interface AstMapper {
 
     void insertTaglib(TagliDAO taglib);
 
-    AnalysisResultsDAO getAnalysisResultBySourceFolderId(Integer id);
+    AnalysisResultDAO getAnalysisResultBySourceFolderId(Integer id);
 
-    void insertAnalysisResult(AnalysisResultsDAO dao);
+    void insertAnalysisResult(AnalysisResultDAO dao);
 
-    void updateAnalysisResult(AnalysisResultsDAO dao);
+    void updateAnalysisResult(AnalysisResultDAO dao);
 
     @Select("select path from hybridanalysis.java_files_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
     String getJavaFilesParseOutput(UserDTO userDTO);
@@ -80,4 +80,7 @@ public interface AstMapper {
 
     @Select("select path from hybridanalysis.faces_config_xml_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
     String getFacesXmlParseOutput(UserDTO userDTO);
+
+    @Select("select id from hybridanalysis.java_files_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
+    Integer getJavaFileParseOutputId(UserDTO userDTO);
 }

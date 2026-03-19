@@ -125,7 +125,7 @@
         </where>
     </select>
     <select id="getAnalysisResultBySourceFolderId"
-            resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisResultsDAO">
+            resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO">
         select * from hybridanalysis.analysis_result where source_folder_id = #{id}
     </select>
 

@@ -4,16 +4,17 @@ import Common.OutputPath;
 import Common.XmlFileInfo.XmlFileInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hybriddependcyanlysis.Mapper.AnalysisReportMapper;
 import com.hybriddependcyanlysis.Mapper.AstMapper;
 import com.hybriddependcyanlysis.Mapper.StaticAnalysisMapper;
-import com.hybriddependcyanlysis.POJO.DAO.JavaFilesParseDAO;
-import com.hybriddependcyanlysis.POJO.DAO.JspParseOutPutDAO;
+import com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO;
+import com.hybriddependcyanlysis.POJO.DTO.AnalysisResultDTO;
 import com.hybriddependcyanlysis.POJO.DTO.UserDTO;
 import com.hybriddependcyanlysis.Service.StaticAnalysisService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,6 +28,9 @@ import java.util.*;
 @Service
 public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
+
+    @Autowired
+    private AnalysisReportMapper analysisReportMapper;
 
     @Autowired
     private StaticAnalysisMapper staticAnalysisMapper;
@@ -45,8 +49,13 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
     @Override
     public void AnnotationCount(UserDTO userDTO) throws IOException {
+
+        AnalysisResultDAO analysisResultDTO = new AnalysisResultDAO();
+        BeanUtils.copyProperties(analysisResultDTO, userDTO);
+        AnalysisResultDAO analysisResultDAO = analysisReportMapper.getAnalysisResult(analysisResultDTO);
+
         // get java parse output path
-        ObjectMapper objectMapper = new ObjectMapper();   //
+        ObjectMapper objectMapper = new ObjectMapper();
         String outputPath = astMapper.getJavaFilesParseOutput(userDTO);
 
         File jsonFile = new File(outputPath);
@@ -127,6 +136,8 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         Path outputRoot = jsonFile.toPath().getParent();
         File reportFile = outputRoot.resolve("annotation-statistics.json").toFile();
 
+
+
         Map<String, Object> report = new LinkedHashMap<>();
         report.put("totalClasses", classes.size());
         report.put("annotationCount", countMap);
@@ -134,6 +145,21 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         report.put("analysisTime", LocalDateTime.now().toString());
 
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, report);
+
+        if(analysisResultDAO == null)
+        {
+            analysisResultDTO.setUserId(userDTO.getId());
+            analysisResultDAO.setName("annotation-statistics");
+            analysisResultDAO.setSourceFolderId(userDTO.getSourceFolderId());
+            analysisResultDAO.setPath(reportFile.toString());
+            analysisResultDAO.setParseOutputId(astMapper.getJavaFileParseOutputId(userDTO));
+            analysisResultDAO.setCreateTime(LocalDateTime.now());
+            analysisResultDAO.setUpdateTime(LocalDateTime.now());
+
+
+            analysisReportMapper.insertResult(analysisResultDAO);
+        }
+
 
 //        System.out.println("\n📁 详细统计报告已保存 → " + reportFile.getAbsolutePath());
 

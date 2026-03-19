@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class AnalysisResultsDAO {
+public class AnalysisResultDAO {
     private Integer id;
     private String name;
     private LocalDateTime createTime;
@@ -17,7 +17,6 @@ public class AnalysisResultsDAO {
     private Integer userId;
     private Integer sourceFolderId;
     private Integer parseOutputId;
-
-
+    private String path;
 
 }

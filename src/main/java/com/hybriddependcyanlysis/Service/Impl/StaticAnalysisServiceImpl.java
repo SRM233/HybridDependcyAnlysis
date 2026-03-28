@@ -1,28 +1,32 @@
 package com.hybriddependcyanlysis.Service.Impl;
 
 import Common.OutputPath;
+import Common.Result;
+import Common.UserContext.UserContextHolder;
 import Common.XmlFileInfo.XmlFileInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hybriddependcyanlysis.Mapper.AnalysisReportMapper;
+
 import com.hybriddependcyanlysis.Mapper.AstMapper;
 import com.hybriddependcyanlysis.Mapper.StaticAnalysisMapper;
 import com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO;
-import com.hybriddependcyanlysis.POJO.DTO.AnalysisResultDTO;
 import com.hybriddependcyanlysis.POJO.DTO.UserDTO;
 import com.hybriddependcyanlysis.Service.StaticAnalysisService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.rmi.RemoteException;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -30,14 +34,17 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
 
     @Autowired
-    private AnalysisReportMapper analysisReportMapper;
-
-    @Autowired
     private StaticAnalysisMapper staticAnalysisMapper;
 
     @Autowired
     private AstMapper astMapper;
 
+
+    //web xml 检查字段
+
+    //<session-config>
+    //<security-constraint></security-constraint> , user-data-constraint，<transport-guarantee>CONFIDENTIAL</transport-guarantee>。
+    //<context-param>
     private static final Set<String> TARGET_WEB_XML_SECTIONS = Set.of(
             "contextParams", "filters", "servlets", "listeners",
             "sessionConfig", "welcomeFiles", "taglibs",
@@ -48,11 +55,156 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
 
     @Override
+    @Transactional
+    public void JspFileCount(UserDTO userDTO) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        userDTO.setId(userId);
+        System.out.println("📊 开始统计 JSP 文件数量（基于简化解析）");
+
+        // 获取 JSP JSON 文件路径
+        String jspOutputPath = astMapper.getJspParseOutputPath(userDTO);
+        File jspJsonFile = new File(jspOutputPath);
+        checkJsonFile(jspJsonFile);
+
+        // 读取 JSP JSON 文件
+        ObjectMapper objectMapper = new ObjectMapper();
+        String content = Files.readString(jspJsonFile.toPath()).trim();
+        if (content.isEmpty() || content.equals("[]") || content.equals("{}")) {
+            throw new RuntimeException("JSP 文件内容为空或空结构: " + jspOutputPath);
+        }
+
+        List<Map<String, Object>> jspClasses = objectMapper.readValue(jspJsonFile,
+                objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+
+        int jspFileCount = jspClasses.size();
+
+        // 生成报告文件
+        Path outputRoot = jspJsonFile.toPath().getParent();
+        File reportFile = outputRoot.resolve("jsp-file-count-report.json").toFile();
+
+        Map<String, Object> report = new LinkedHashMap<>();
+        report.put("totalJspFiles", jspFileCount);
+        report.put("jspFiles", jspClasses.stream().map(cls -> {
+            Map<String, Object> info = new LinkedHashMap<>();
+            info.put("fullName", cls.get("fullName"));
+            info.put("simpleName", cls.get("simpleName"));
+            info.put("originalJspFile", cls.getOrDefault("originalJspFile", cls.get("fullName")));
+            info.put("isGeneratedFromJsp", cls.get("isGeneratedFromJsp"));
+            return info;
+        }).collect(Collectors.toList()));
+        report.put("analysisTime", LocalDateTime.now().toString());
+
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, report);
+
+        // 保存分析结果到数据库
+        AnalysisResultDAO analysisResultDTO = new AnalysisResultDAO();
+        analysisResultDTO.setUserId(userDTO.getId());
+        analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
+        analysisResultDTO.setName("jsp-file-count");
+        analysisResultDTO.setParseOutputId(astMapper.getJspParseOutputId(userDTO));
+        analysisResultDTO.setPath(reportFile.getAbsolutePath());
+        analysisResultDTO.setCreateTime(LocalDateTime.now());
+        analysisResultDTO.setUpdateTime(LocalDateTime.now());
+
+        AnalysisResultDAO existingResult = staticAnalysisMapper.getJspFileCountAnalysisResult(analysisResultDTO);
+        if (existingResult == null) {
+            staticAnalysisMapper.insertResult(analysisResultDTO);
+        } else {
+            existingResult.setPath(reportFile.getAbsolutePath());
+            existingResult.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.updateResult(existingResult);
+        }
+
+        System.out.println("✅ JSP 文件统计完成 → " + reportFile.getAbsolutePath());
+        System.out.println("   共发现 " + jspFileCount + " 个 JSP 文件");
+    }
+
+    @Override
+    @Transactional
+    public void JsfFileCount(UserDTO userDTO) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        userDTO.setId(userId);
+        System.out.println("📊 开始统计 JSF 文件数量（基于简化解析）");
+
+        // 获取 JSF JSON 文件路径
+        String jsfOutputPath = astMapper.getJsfParseOutput(userDTO);
+        File jsfJsonFile = new File(jsfOutputPath);
+        checkJsonFile(jsfJsonFile);
+
+        // 读取 JSF JSON 文件
+        ObjectMapper objectMapper = new ObjectMapper();
+        String content = Files.readString(jsfJsonFile.toPath()).trim();
+        if (content.isEmpty() || content.equals("[]") || content.equals("{}")) {
+            throw new RuntimeException("JSF 文件内容为空或空结构: " + jsfOutputPath);
+        }
+
+        List<Map<String, Object>> jsfFiles = objectMapper.readValue(jsfJsonFile,
+                objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+
+        int jsfFileCount = jsfFiles.size();
+
+        // 生成报告文件
+        Path outputRoot = jsfJsonFile.toPath().getParent();
+        File reportFile = outputRoot.resolve("jsf-file-count-report.json").toFile();
+
+        Map<String, Object> report = new LinkedHashMap<>();
+        report.put("totalJsfFiles", jsfFileCount);
+        report.put("jsfFiles", jsfFiles.stream().map(jsf -> {
+            Map<String, Object> info = new LinkedHashMap<>();
+            info.put("filePath", jsf.get("filePath"));
+            info.put("namespaces", jsf.getOrDefault("namespaces", List.of()));
+            info.put("includes", jsf.getOrDefault("includes", List.of()));
+            info.put("beans", jsf.getOrDefault("beans", List.of()));
+            return info;
+        }).collect(Collectors.toList()));
+        report.put("analysisTime", LocalDateTime.now().toString());
+
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, report);
+
+        // 保存分析结果到数据库
+        AnalysisResultDAO analysisResultDTO = new AnalysisResultDAO();
+        analysisResultDTO.setUserId(userDTO.getId());
+        analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
+        analysisResultDTO.setName("jsf-file-count");
+        analysisResultDTO.setParseOutputId(astMapper.getJsfParseOutputId(userDTO));
+        analysisResultDTO.setPath(reportFile.getAbsolutePath());
+        analysisResultDTO.setCreateTime(LocalDateTime.now());
+        analysisResultDTO.setUpdateTime(LocalDateTime.now());
+
+        AnalysisResultDAO existingResult = staticAnalysisMapper.getJsfFileCountAnalysisResult(analysisResultDTO);
+        if (existingResult == null) {
+            staticAnalysisMapper.insertResult(analysisResultDTO);
+        } else {
+            existingResult.setPath(reportFile.getAbsolutePath());
+            existingResult.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.updateResult(existingResult);
+        }
+
+        System.out.println("✅ JSF 文件统计完成 → " + reportFile.getAbsolutePath());
+        System.out.println("   共发现 " + jsfFileCount + " 个 JSF 文件");
+    }
+
+    @Override
+    @Transactional
     public void AnnotationCount(UserDTO userDTO) throws IOException {
 
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RemoteException("User not authenticated");
+        }
+        userDTO.setId(userId);
+
         AnalysisResultDAO analysisResultDTO = new AnalysisResultDAO();
-        BeanUtils.copyProperties(analysisResultDTO, userDTO);
-        AnalysisResultDAO analysisResultDAO = analysisReportMapper.getAnalysisResult(analysisResultDTO);
+        analysisResultDTO.setUserId(userDTO.getId());
+        analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
+        analysisResultDTO.setName("annotation-statistics");
+        AnalysisResultDAO analysisResultDAO = staticAnalysisMapper.getAnnotationCountAnalysisResult(analysisResultDTO);
 
         // get java parse output path
         ObjectMapper objectMapper = new ObjectMapper();
@@ -148,20 +300,18 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         if(analysisResultDAO == null)
         {
-            analysisResultDTO.setUserId(userDTO.getId());
-            analysisResultDAO.setName("annotation-statistics");
-            analysisResultDAO.setSourceFolderId(userDTO.getSourceFolderId());
-            analysisResultDAO.setPath(reportFile.toString());
-            analysisResultDAO.setParseOutputId(astMapper.getJavaFileParseOutputId(userDTO));
-            analysisResultDAO.setCreateTime(LocalDateTime.now());
+            analysisResultDTO.setPath(reportFile.getAbsolutePath());
+            analysisResultDTO.setParseOutputId(astMapper.getJavaFileParseOutputId(userDTO));
+            analysisResultDTO.setCreateTime(LocalDateTime.now());
+            analysisResultDTO.setUpdateTime(LocalDateTime.now());
+
+            staticAnalysisMapper.insertResult(analysisResultDTO);
+//            analysisResultDAO = analysisResultDTO;
+        } else {
+            analysisResultDAO.setPath(reportFile.getAbsolutePath());
             analysisResultDAO.setUpdateTime(LocalDateTime.now());
-
-
-            analysisReportMapper.insertResult(analysisResultDAO);
+            staticAnalysisMapper.updateResult(analysisResultDAO);
         }
-
-        analysisResultDAO.setUpdateTime(LocalDateTime.now());
-        analysisReportMapper.updateResult(analysisResultDAO);
 
 
 //        System.out.println("\n📁 详细统计报告已保存 → " + reportFile.getAbsolutePath());
@@ -312,6 +462,25 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         System.out.println("   迁移建议: " + migrationSuggestions.size() + " 条 | 现代化评分: " + analysis.get("modernizationScore") + "/100");
 
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, analysis);
+        
+        // 保存分析结果到数据库
+        AnalysisResultDAO analysisResultDTO = new AnalysisResultDAO();
+        analysisResultDTO.setUserId(userDTO.getId());
+        analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
+        analysisResultDTO.setName("web-xml-analysis");
+        AnalysisResultDAO analysisResultDAO = staticAnalysisMapper.getWebXmlAnalysisResult(analysisResultDTO);
+        
+        if (analysisResultDAO == null) {
+            analysisResultDTO.setParseOutputId(astMapper.getWebXmlParseOutputId(userDTO));
+            analysisResultDTO.setPath(reportFile.getAbsolutePath());
+            analysisResultDTO.setCreateTime(LocalDateTime.now());
+            analysisResultDTO.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.insertResult(analysisResultDTO);
+        } else {
+            analysisResultDAO.setPath(reportFile.getAbsolutePath());
+            analysisResultDAO.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.updateResult(analysisResultDAO);
+        }
 
     }
 
@@ -416,6 +585,25 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         System.out.println("🎉 文件存储分析完成！报告生成 → " + reportFile.getAbsolutePath());
 
+        // 保存分析结果到数据库
+        AnalysisResultDAO analysisResultDTO = new AnalysisResultDAO();
+        analysisResultDTO.setUserId(userDTO.getId());
+        analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
+        analysisResultDTO.setName("file-store-analysis");
+        AnalysisResultDAO analysisResultDAO = staticAnalysisMapper.getFileStoreAnalysisResult(analysisResultDTO);
+        
+        if (analysisResultDAO == null) {
+            analysisResultDTO.setParseOutputId(astMapper.getJavaFileParseOutputId(userDTO));
+            analysisResultDTO.setPath(reportFile.getAbsolutePath());
+            analysisResultDTO.setCreateTime(LocalDateTime.now());
+            analysisResultDTO.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.insertResult(analysisResultDTO);
+        } else {
+            analysisResultDAO.setPath(reportFile.getAbsolutePath());
+            analysisResultDAO.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.updateResult(analysisResultDAO);
+        }
+
     }
 
     @Override
@@ -501,6 +689,25 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, analysis);
 
         System.out.println("✅ persistence.xml 分析完成！報告生成 → " + reportFile.getAbsolutePath());
+
+        // 保存分析结果到数据库
+        AnalysisResultDAO analysisResultDTO = new AnalysisResultDAO();
+        analysisResultDTO.setUserId(userDTO.getId());
+        analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
+        analysisResultDTO.setName("persistence-analysis");
+        AnalysisResultDAO analysisResultDAO = staticAnalysisMapper.getPersistenceAnalysisResult(analysisResultDTO);
+        
+        if (analysisResultDAO == null) {
+            analysisResultDTO.setParseOutputId(astMapper.getPersistenceXmlParseOutputId(userDTO));
+            analysisResultDTO.setPath(reportFile.getAbsolutePath());
+            analysisResultDTO.setCreateTime(LocalDateTime.now());
+            analysisResultDTO.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.insertResult(analysisResultDTO);
+        } else {
+            analysisResultDAO.setPath(reportFile.getAbsolutePath());
+            analysisResultDAO.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.updateResult(analysisResultDAO);
+        }
     }
     @Override
     public void ejbJarAnalysis(UserDTO userDTO) throws IOException {
@@ -601,6 +808,25 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, analysis);
 
         System.out.println("✅ ejb-jar.xml 分析完成 → " + reportFile.getAbsolutePath());
+
+        // 保存分析结果到数据库
+        AnalysisResultDAO analysisResultDTO = new AnalysisResultDAO();
+        analysisResultDTO.setUserId(userDTO.getId());
+        analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
+        analysisResultDTO.setName("ejb-jar-analysis");
+        AnalysisResultDAO analysisResultDAO = staticAnalysisMapper.getEjbJarAnalysisResult(analysisResultDTO);
+        
+        if (analysisResultDAO == null) {
+            analysisResultDTO.setParseOutputId(astMapper.getEjbJarXmlParseOutputId(userDTO));
+            analysisResultDTO.setPath(reportFile.getAbsolutePath());
+            analysisResultDTO.setCreateTime(LocalDateTime.now());
+            analysisResultDTO.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.insertResult(analysisResultDTO);
+        } else {
+            analysisResultDAO.setPath(reportFile.getAbsolutePath());
+            analysisResultDAO.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.updateResult(analysisResultDAO);
+        }
     }
 
     @Override
@@ -669,12 +895,12 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 //        if (hasLowJavaVersion) {
 //            migrationSuggestions.add("⚠️ 检测到 Java 版本过低（低于 11），建议升级到 Java 17+ 以支持现代容器（如 Liberty/WildFly）");
 //        }
-//        if (hasLegacyServerDep) {
-//            migrationSuggestions.add("⚠️ 检测到传统应用服务器依赖（如 WebLogic/WebSphere），建议移除并迁移到轻量服务器");
-//        }
-//        if (totalProfileCount > 0) {
-//            migrationSuggestions.add("ℹ️ 检测到 " + totalProfileCount + " 个 profile，建议将多环境配置外部化到 Kubernetes ConfigMap");
-//        }
+        if (hasLegacyServerDep) {
+            migrationSuggestions.add("⚠️ 检测到传统应用服务器依赖（如 WebLogic/WebSphere），建议移除并迁移到轻量服务器");
+        }
+        if (totalProfileCount > 0) {
+            migrationSuggestions.add("ℹ️ 检测到 " + totalProfileCount + " 个 profile，建议将多环境配置外部化到 Kubernetes ConfigMap");
+        }
 //        if (allDependencies.stream().anyMatch(d -> d.contains("jakarta.jakartaee-api") && d.contains("1.0"))) {
 //            migrationSuggestions.add("⚠️ 检测到旧版 Jakarta EE API 依赖，建议升级到 10.0+ 以兼容容器");
 //        }
@@ -690,6 +916,25 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(analysisReportFile, analysis);
 
         System.out.println("✅ pom.xml 整合分析完成！报告生成 → " + analysisReportFile.getAbsolutePath());
+
+        // 保存分析结果到数据库
+        AnalysisResultDAO analysisResultDTO = new AnalysisResultDAO();
+        analysisResultDTO.setUserId(userDTO.getId());
+        analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
+        analysisResultDTO.setName("pom-xml-analysis");
+        AnalysisResultDAO analysisResultDAO = staticAnalysisMapper.getPomXmlAnalysisResult(analysisResultDTO);
+        
+        if (analysisResultDAO == null) {
+            analysisResultDTO.setParseOutputId(astMapper.getPomXmlParseOutputId(userDTO));
+            analysisResultDTO.setPath(analysisReportFile.getAbsolutePath());
+            analysisResultDTO.setCreateTime(LocalDateTime.now());
+            analysisResultDTO.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.insertResult(analysisResultDTO);
+        } else {
+            analysisResultDAO.setPath(analysisReportFile.getAbsolutePath());
+            analysisResultDAO.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.updateResult(analysisResultDAO);
+        }
     }
 
     @Override
@@ -737,6 +982,25 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, analysis);
 
         System.out.println("✅ faces-config.xml 分析完成 → " + reportFile.getAbsolutePath());
+
+        // 保存分析结果到数据库
+        AnalysisResultDAO analysisResultDTO = new AnalysisResultDAO();
+        analysisResultDTO.setUserId(userDTO.getId());
+        analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
+        analysisResultDTO.setName("faces-config-analysis");
+        AnalysisResultDAO analysisResultDAO = staticAnalysisMapper.getFacesConfigAnalysisResult(analysisResultDTO);
+        
+        if (analysisResultDAO == null) {
+            analysisResultDTO.setParseOutputId(astMapper.getFacesXmlParseOutputId(userDTO));
+            analysisResultDTO.setPath(reportFile.getAbsolutePath());
+            analysisResultDTO.setCreateTime(LocalDateTime.now());
+            analysisResultDTO.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.insertResult(analysisResultDTO);
+        } else {
+            analysisResultDAO.setPath(reportFile.getAbsolutePath());
+            analysisResultDAO.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.updateResult(analysisResultDAO);
+        }
     }
 
 
@@ -788,6 +1052,43 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         }
         return outputRoot;
     }
+
+    @Override
+    public void deleteAnnotationAnalysis(Integer userId, Integer sourceFolderId) {
+        staticAnalysisMapper.deleteAnnotationAnalysisResult(userId, sourceFolderId);
+    }
+
+    @Override
+    public void deleteWebXmlAnalysis(Integer userId, Integer sourceFolderId) {
+        staticAnalysisMapper.deleteWebXmlAnalysisResult(userId, sourceFolderId);
+    }
+
+    @Override
+    public void deleteFileStoreAnalysis(Integer userId, Integer sourceFolderId) {
+        staticAnalysisMapper.deleteFileStoreAnalysisResult(userId, sourceFolderId);
+    }
+
+    @Override
+    public void deletePersistenceAnalysis(Integer userId, Integer sourceFolderId) {
+        staticAnalysisMapper.deletePersistenceAnalysisResult(userId, sourceFolderId);
+    }
+
+    @Override
+    public void deleteEjbJarAnalysis(Integer userId, Integer sourceFolderId) {
+        staticAnalysisMapper.deleteEjbJarAnalysisResult(userId, sourceFolderId);
+    }
+
+    @Override
+    public void deletePomXmlAnalysis(Integer userId, Integer sourceFolderId) {
+        staticAnalysisMapper.deletePomXmlAnalysisResult(userId, sourceFolderId);
+    }
+
+    @Override
+    public void deleteFacesConfigAnalysis(Integer userId, Integer sourceFolderId) {
+        staticAnalysisMapper.deleteFacesConfigAnalysisResult(userId, sourceFolderId);
+    }
+
+
 
 }
 

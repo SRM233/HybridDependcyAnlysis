@@ -2,11 +2,11 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.hybriddependcyanlysis.Mapper.AnalysisReportMapper">
+<mapper namespace="com.hybriddependcyanlysis.Mapper.AnalysisResultMapper">
 
     <insert id="insertResult">
-        insert into hybridanalysis.analysis_results (name, create_time, update_time, user_id, source_folder_id, parse_output_id)
-        VALUES (#{name}, #{createTime},#{updateTime},#{userId},#{sourceFolderId},#{parseOutputId})
+        insert into hybridanalysis.analysis_results (name, create_time, update_time, user_id, source_folder_id, parse_output_id, path)
+        VALUES (#{name}, #{createTime},#{updateTime},#{userId},#{sourceFolderId},#{parseOutputId}, #{path})
     </insert>
     <update id="updateResult">
         update hybridanalysis.analysis_results
@@ -33,6 +33,7 @@
                 path = #{path},
             </if>
         </set>
+        WHERE id = #{id}
     </update>
 
     <select id="getAnalysisResult" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO">

@@ -7,9 +7,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class AnalysisResultDTO {
+public class ParseFilesDTO {
     private Integer userId;
     private Integer sourceFolderId;
-    private Integer parseOutputId;
-
 }

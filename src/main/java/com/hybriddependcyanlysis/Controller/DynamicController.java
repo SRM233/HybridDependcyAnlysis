@@ -1,6 +1,7 @@
 package com.hybriddependcyanlysis.Controller;
 
 import Common.Result;
+import Common.UserContext.UserContextHolder;
 import com.hybriddependcyanlysis.Service.DynamicAnalysisService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,10 +20,14 @@ public class DynamicController {
     private DynamicAnalysisService dynamicAnalysisService;
 
     @PostMapping()
-    public Result dynamicAnalysis(Integer id) throws IOException {
-        log.info("user Id: {}", id);
+    public Result dynamicAnalysis() throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        log.info("user Id: {}", userId);
 
-        dynamicAnalysisService.jarPack(id);
+        dynamicAnalysisService.jarPack(userId);
 
         return Result.success();
     }

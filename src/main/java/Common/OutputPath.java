@@ -13,6 +13,9 @@ public class OutputPath {
     public static final String EJB_JAR_PARSE_RESULT_PATH          = "ejb-jar-xml-parse-output.json";   // ← 加 .json
     public static final String FACES_CONFIG_PARSE_RESULT_PATH     = "faces-config-parse-output.json";  // ← 加 .json
     public static final String EAR_APPLICATION_PARSE_RESULT_PATH  = "application-xml-parse-output.json"; // ← 加 .json
+    
+    // Issue 报告
+    public static final String ISSUES_PARSE_RESULT_PATH           = "issues-output.json";
 
     // 错误日志（保持不带 .json，可能是纯文本日志或目录）
     public static final String JAVA_PARSE_ERROR_LOG_PATH          = "java-parse-errors.txt";

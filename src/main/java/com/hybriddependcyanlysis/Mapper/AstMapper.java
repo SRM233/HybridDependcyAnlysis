@@ -1,16 +1,16 @@
 package com.hybriddependcyanlysis.Mapper;
 
 import com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO;
-import com.hybriddependcyanlysis.POJO.DAO.JavaFilesParseDAO;
 import com.hybriddependcyanlysis.POJO.DAO.AstSchema.ClassDAO;
 import com.hybriddependcyanlysis.POJO.DAO.AstSchema.DependencyDAO;
 import com.hybriddependcyanlysis.POJO.DAO.AstSchema.MethodDAO;
 import com.hybriddependcyanlysis.POJO.DAO.AstSchema.ParameterDAO;
-import com.hybriddependcyanlysis.POJO.DAO.JspParseOutPutDAO;
 import com.hybriddependcyanlysis.POJO.DAO.ClientSideSchema.ELexpressionDAO;
 import com.hybriddependcyanlysis.POJO.DAO.ClientSideSchema.PageDAO;
 import com.hybriddependcyanlysis.POJO.DAO.ClientSideSchema.PageImportDAO;
 import com.hybriddependcyanlysis.POJO.DAO.ClientSideSchema.TagliDAO;
+import com.hybriddependcyanlysis.POJO.DAO.JavaFilesParseDAO;
+import com.hybriddependcyanlysis.POJO.DAO.JspParseOutPutDAO;
 import com.hybriddependcyanlysis.POJO.DTO.UserDTO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
@@ -83,4 +83,31 @@ public interface AstMapper {
 
     @Select("select id from hybridanalysis.java_files_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
     Integer getJavaFileParseOutputId(UserDTO userDTO);
+
+    @Select("select id from hybridanalysis.web_xml_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
+    Integer getWebXmlParseOutputId(UserDTO userDTO);
+
+    @Select("select id from hybridanalysis.persistence_xml_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
+    Integer getPersistenceXmlParseOutputId(UserDTO userDTO);
+
+    @Select("select id from hybridanalysis.ejb_jar_xml_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
+    Integer getEjbJarXmlParseOutputId(UserDTO userDTO);
+
+    @Select("select id from hybridanalysis.pom_xml_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
+    Integer getPomXmlParseOutputId(UserDTO userDTO);
+
+    @Select("select id from hybridanalysis.faces_config_xml_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
+    Integer getFacesXmlParseOutputId(UserDTO userDTO);
+
+    @Select("select path from hybridanalysis.jsp_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
+    String getJspParseOutputPath(UserDTO userDTO);
+
+    @Select("select path from hybridanalysis.jsf_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
+    String getJsfParseOutput(UserDTO userDTO);
+
+    @Select("select id from hybridanalysis.jsp_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
+    Integer getJspParseOutputId(UserDTO userDTO);
+
+    @Select("select id from hybridanalysis.jsf_parse_output where user_id = #{id} and source_folder_id = #{sourceFolderId}")
+    Integer getJsfParseOutputId(UserDTO userDTO);
 }

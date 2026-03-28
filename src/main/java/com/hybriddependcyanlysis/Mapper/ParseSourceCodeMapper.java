@@ -103,4 +103,37 @@ public interface ParseSourceCodeMapper {
     void insertPomXmlParseOutput(PomXmlParseOutputDAO pomXmlParseOutputDAO);
 
     void updatePomXmlParseOutput(PomXmlParseOutputDAO pomXmlParseOutputDAO);
+
+    @Delete("delete from hybridanalysis.web_xml_parse_output where user_id = #{userId} and source_folder_id = #{sourceFolderId}")
+    void deleteWebXmlParseOutput(Integer userId, Integer sourceFolderId);
+
+    @Delete("delete from hybridanalysis.persistence_xml_parse_output where user_id = #{userId} and source_folder_id = #{sourceFolderId}")
+    void deletePersistenceXmlParseOutput(Integer userId, Integer sourceFolderId);
+
+    @Delete("delete from hybridanalysis.ejb_jar_xml_parse_output where user_id = #{userId} and source_folder_id = #{sourceFolderId}")
+    void deleteEjbJarXmlParseOutput(Integer userId, Integer sourceFolderId);
+
+    @Delete("delete from hybridanalysis.faces_config_xml_parse_output where user_id = #{userId} and source_folder_id = #{sourceFolderId}")
+    void deleteFacesConfigXmlParseOutput(Integer userId, Integer sourceFolderId);
+
+    @Delete("delete from hybridanalysis.application_xml_parse_output where user_id = #{userId} and source_folder_id = #{sourceFolderId}")
+    void deleteApplicationXmlParseOutput(Integer userId, Integer sourceFolderId);
+
+    @Delete("delete from hybridanalysis.pom_xml_parse_output where user_id = #{userId} and source_folder_id = #{sourceFolderId}")
+    void deletePomXmlParseOutput(Integer userId, Integer sourceFolderId);
+
+    @Delete("delete from hybridanalysis.jsf_parse_output where user_id = #{userId} and source_folder_id = #{sourceFolderId}")
+    void deleteJsfParseOutput(Integer userId, Integer sourceFolderId);
+
+    @Delete("delete from hybridanalysis.java_files_parse_output where user_id = #{userId} and source_folder_id = #{sourceFolderId}")
+    void deleteJavaParseOutputBySourceFolder(Integer userId, Integer sourceFolderId);
+
+    @Delete("delete from hybridanalysis.java_files_error where user_id = #{userId} and source_folder_id = #{sourceFolderId}")
+    void deleteJavaErrorBySourceFolder(Integer userId, Integer sourceFolderId);
+
+    @Delete("delete from hybridanalysis.jsp_parse_output where user_id = #{userId} and source_folder_id = #{sourceFolderId}")
+    void deleteJspParseOutputBySourceFolder(Integer userId, Integer sourceFolderId);
+
+    @Delete("delete from hybridanalysis.jsp_parse_error where user_id = #{userId} and source_folder_id = #{sourceFolderId}")
+    void deleteJspErrorBySourceFolder(Integer userId, Integer sourceFolderId);
 }

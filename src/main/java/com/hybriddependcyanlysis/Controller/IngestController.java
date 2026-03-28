@@ -1,6 +1,7 @@
 package com.hybriddependcyanlysis.Controller;
 
 import Common.Result;
+import Common.UserContext.UserContextHolder;
 import com.hybriddependcyanlysis.POJO.DTO.UserFolderDTO;
 import com.hybriddependcyanlysis.Service.IngestService;
 
@@ -15,16 +16,19 @@ public class IngestController {
 
     @Autowired
     private IngestService ingestService;
+
+    //用户上传zip档案请求
     @PostMapping("/upload")
-    public Result uploadFile(@ModelAttribute UserFolderDTO userFileDTO)
+    public Result uploadFile(@ModelAttribute UserFolderDTO userFolderDTO)
     {
-        log.info("Ingest file:{}", userFileDTO);
-        ingestService.sourceFolderIngest(userFileDTO);
+
+        log.info("Ingest file:{}", userFolderDTO);
+        ingestService.sourceFolderIngest(userFolderDTO);
 //        if (file.getSize() > 1024 * 1024)
 //        {
 //            return Result.fail("File size is larger than 1GB");
 //        }
-        return Result.success();
+        return Result.success("Ingest file uploaded");
 
     }
 

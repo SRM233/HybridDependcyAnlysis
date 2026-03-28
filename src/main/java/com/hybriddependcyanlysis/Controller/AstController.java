@@ -1,6 +1,7 @@
 package com.hybriddependcyanlysis.Controller;
 
 import Common.Result;
+import Common.UserContext.UserContextHolder;
 import com.hybriddependcyanlysis.POJO.DTO.UserDTO;
 import com.hybriddependcyanlysis.Service.AstService;
 import lombok.extern.slf4j.Slf4j;
@@ -18,22 +19,34 @@ public class AstController {
     private AstService astService;
 
     @GetMapping("/getOutput")
-    public Result getOutput(Integer userId, Integer sourceFolderId)
+    public Result getOutput(Integer sourceFolderId)
     {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
         log.info("userId:{}, sourceFolderId:{}", userId, sourceFolderId);
         astService.getOutPutFile(userId, sourceFolderId);
         return Result.success();
     }
 
     @PostMapping("/mappingAst")
-    public Result mapping(Integer userId, Integer sourceFolderId) throws IOException {
+    public Result mapping(Integer sourceFolderId) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
         astService.MappingOutPutFile(userId, sourceFolderId);
         return Result.success();
     }
 
     @DeleteMapping("/deleteOutPutReport")
-    public Result deleteOutputReport(Integer userId, Integer sourceFolderId)
+    public Result deleteOutputReport(Integer sourceFolderId)
     {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
         astService.deleteOutputReport(userId, sourceFolderId);
         return Result.success();
     }

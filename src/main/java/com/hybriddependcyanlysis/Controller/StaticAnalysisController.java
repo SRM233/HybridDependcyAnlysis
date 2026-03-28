@@ -1,6 +1,7 @@
 package com.hybriddependcyanlysis.Controller;
 
 import Common.Result;
+import Common.UserContext.UserContextHolder;
 import com.hybriddependcyanlysis.POJO.DTO.UserDTO;
 import com.hybriddependcyanlysis.Service.StaticAnalysisService;
 import lombok.extern.slf4j.Slf4j;
@@ -36,9 +37,18 @@ public class StaticAnalysisController {
 //        return Result.success(el);
 //    }
 
+
+    @PostMapping("/JspFilesCount")
+    public Result JspFilesCount(@RequestBody UserDTO userDTO) throws IOException {
+        staticAnalysisService.JspFileCount(userDTO);
+        return Result.success();
+    }
+
+    //用户注解请求
     @PostMapping("/annotationAnalysis")
     public Result AnnotationAnalysis(@RequestBody UserDTO userDTO)
     {
+
         log.info("GetAnnotationCount:{}", userDTO);
         try {
             staticAnalysisService.AnnotationCount(userDTO);
@@ -50,6 +60,11 @@ public class StaticAnalysisController {
 
     @PostMapping("/webXMlFileAnalysis")
     public Result webXMlFileAnalysis(@RequestBody UserDTO userDTO) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        userDTO.setId(userId);
         log.info("GetWebXMlFileAnalysis:{}", userDTO);
         staticAnalysisService.analyzeWebXml(userDTO);
         return Result.success();
@@ -57,6 +72,11 @@ public class StaticAnalysisController {
 
     @PostMapping("/fileStoreAnalysis")
     public Result FileStoreAnalysis(@RequestBody UserDTO userDTO) throws Exception {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        userDTO.setId(userId);
         log.info("FileStoreAnalysis:{}", userDTO);
         staticAnalysisService.FileStoreAnalysis(userDTO);
         return Result.success();
@@ -64,6 +84,11 @@ public class StaticAnalysisController {
 
     @PostMapping("/persistenceAnalysis")
     public Result persistenceAnalysis(@RequestBody UserDTO userDTO) throws Exception {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        userDTO.setId(userId);
         log.info("persistenceAnalysis:{}", userDTO);
         staticAnalysisService.persistenceAnalysis(userDTO);
         return Result.success();
@@ -71,6 +96,11 @@ public class StaticAnalysisController {
 
     @PostMapping("/ejbJarAnalysis")
     public Result ejbJarAnalysis(@RequestBody UserDTO userDTO) throws Exception {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        userDTO.setId(userId);
         log.info("ejbJarAnalysis:{}", userDTO);
         staticAnalysisService.ejbJarAnalysis(userDTO);
         return Result.success();
@@ -78,6 +108,11 @@ public class StaticAnalysisController {
 
     @PostMapping("/pomXmlAnalysis")
     public Result pomXmlAnalysis(@RequestBody UserDTO userDTO) throws Exception {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        userDTO.setId(userId);
         log.info("ejbJarAnalysis:{}", userDTO);
         staticAnalysisService.pomXmlAnalysis(userDTO);
         return Result.success();
@@ -85,12 +120,91 @@ public class StaticAnalysisController {
 
     @PostMapping("/facesXmlAnalysis")
     public Result facesXmlAnalysis(@RequestBody UserDTO userDTO) throws Exception {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        userDTO.setId(userId);
         log.info("facesXmlAnalysis:{}", userDTO);
         staticAnalysisService.facesXmlAnalysis(userDTO);
         return Result.success();
     }
 
+    @DeleteMapping("/deleteAnnotationAnalysis")
+    public Result deleteAnnotationAnalysis(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        log.info("Deleting annotation analysis for source folder id:{}", sourceFolderId);
+        staticAnalysisService.deleteAnnotationAnalysis(userId, sourceFolderId);
+        return Result.success();
+    }
 
+    @DeleteMapping("/deleteWebXmlAnalysis")
+    public Result deleteWebXmlAnalysis(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        log.info("Deleting Web XML analysis for source folder id:{}", sourceFolderId);
+        staticAnalysisService.deleteWebXmlAnalysis(userId, sourceFolderId);
+        return Result.success();
+    }
 
+    @DeleteMapping("/deleteFileStoreAnalysis")
+    public Result deleteFileStoreAnalysis(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        log.info("Deleting file store analysis for source folder id:{}", sourceFolderId);
+        staticAnalysisService.deleteFileStoreAnalysis(userId, sourceFolderId);
+        return Result.success();
+    }
+
+    @DeleteMapping("/deletePersistenceAnalysis")
+    public Result deletePersistenceAnalysis(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        log.info("Deleting persistence analysis for source folder id:{}", sourceFolderId);
+        staticAnalysisService.deletePersistenceAnalysis(userId, sourceFolderId);
+        return Result.success();
+    }
+
+    @DeleteMapping("/deleteEjbJarAnalysis")
+    public Result deleteEjbJarAnalysis(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        log.info("Deleting EJB JAR analysis for source folder id:{}", sourceFolderId);
+        staticAnalysisService.deleteEjbJarAnalysis(userId, sourceFolderId);
+        return Result.success();
+    }
+
+    @DeleteMapping("/deletePomXmlAnalysis")
+    public Result deletePomXmlAnalysis(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        log.info("Deleting POM XML analysis for source folder id:{}", sourceFolderId);
+        staticAnalysisService.deletePomXmlAnalysis(userId, sourceFolderId);
+        return Result.success();
+    }
+
+    @DeleteMapping("/deleteFacesConfigAnalysis")
+    public Result deleteFacesConfigAnalysis(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        log.info("Deleting Faces Config analysis for source folder id:{}", sourceFolderId);
+        staticAnalysisService.deleteFacesConfigAnalysis(userId, sourceFolderId);
+        return Result.success();
+    }
 
 }

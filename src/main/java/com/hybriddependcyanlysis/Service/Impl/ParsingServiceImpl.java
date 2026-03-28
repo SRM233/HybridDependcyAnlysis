@@ -206,9 +206,14 @@ public class ParsingServiceImpl implements ParsingService {
             classInfo.addField(f);
         }
 
+        // ==================== 依赖检测 ====================
+        Set<String> classDeps = new HashSet<>();
+        detectConstructorIssues(type, classDeps);
+        detectMemoryReplicationIssues(type, classDeps);
+        
         // ==================== 方法 ====================
         for (CtMethod<?> method : type.getMethods()) {
-            parseMethod(method, classInfo);
+            parseMethodWithDeps(method, classInfo, classDeps);
         }
 
 
@@ -225,13 +230,17 @@ public class ParsingServiceImpl implements ParsingService {
         }
         classInfo.setImports(importList);
 
+        // 存储依赖关系到 dependencyGraph
+        if (!classDeps.isEmpty()) {
+            dependencyGraph.computeIfAbsent(classInfo.getFullName(), k -> new HashSet<>()).addAll(classDeps);
+        }
 
         javaClasses.add(classInfo);
 
 
     }
 
-    public void parseMethod(CtMethod<?> method, JavaClassInfo classInfo) {
+    private void parseMethodWithDeps(CtMethod<?> method, JavaClassInfo classInfo, Set<String> classDeps) throws IOException {
         MethodInfo m = new MethodInfo();
         m.name = method.getSimpleName();
         m.returnType = method.getType() != null ? method.getType().getQualifiedName() : "(unresolved)";
@@ -252,6 +261,13 @@ public class ParsingServiceImpl implements ParsingService {
         }
 
         classInfo.addMethod(m);
+        
+        detectInvocationIssues(method, classDeps);
+    }
+
+    @Override
+    public void parseMethod(CtMethod<?> method, JavaClassInfo classInfo) throws IOException {
+        parseMethodWithDeps(method, classInfo, new HashSet<>());
     }
 
     public void parsePackage(CtModel model, BufferedWriter writer) throws IOException {
@@ -267,7 +283,7 @@ public class ParsingServiceImpl implements ParsingService {
 //            });
         }
 
-    public void detectInvocationIssues(CtMethod<?> method, Set<String> classDeps) {   // ← 去掉 writer 参数
+    public void detectInvocationIssues(CtMethod<?> method, Set<String> classDeps) throws IOException {   // Detect import problem
         String className = method.getDeclaringType().getQualifiedName();
         boolean isGeneratedJsp = className.contains("_jsp") || className.contains("org.apache.jsp");
 
@@ -317,6 +333,7 @@ public class ParsingServiceImpl implements ParsingService {
                     issue.message = "Uses " + declaringTypeName + "." + signature + " → " + issueType;
                     issue.location = "";   // 如果后面需要位置信息可以再加
                     issue.className = className;
+                    issue.source = "invocation";
                     allIssues.add(issue);
                 }
 
@@ -347,7 +364,7 @@ public class ParsingServiceImpl implements ParsingService {
     }
 
     // ====================== 4. detectConstructorIssues ======================
-    public void detectConstructorIssues(CtType<?> type, Set<String> classDeps) {   // ← 去掉 writer 参数
+    public void detectConstructorIssues(CtType<?> type, Set<String> classDeps) throws IOException {   // ← 去掉 writer 参数
         type.filterChildren(new TypeFilter<>(CtConstructorCall.class)).forEach(ctor -> {
             try {
                 CtConstructorCall<?> call = (CtConstructorCall<?>) ctor;
@@ -368,6 +385,7 @@ public class ParsingServiceImpl implements ParsingService {
                         issue1.message = "Uses HttpSession → StatefulSession";
                         issue1.location = "in class " + type.getSimpleName();
                         issue1.className = type.getQualifiedName();
+                        issue1.source = "constructor";
                         allIssues.add(issue1);
                         break;
 
@@ -381,6 +399,7 @@ public class ParsingServiceImpl implements ParsingService {
                         issue2.message = "Uses " + typeName + " → FileSystemDependency";
                         issue2.location = "in class " + type.getSimpleName();
                         issue2.className = type.getQualifiedName();
+                        issue2.source = "constructor";
                         allIssues.add(issue2);
                         break;
 
@@ -393,6 +412,7 @@ public class ParsingServiceImpl implements ParsingService {
                         issue3.message = "Uses Socket → PortBindingRisk";
                         issue3.location = "in class " + type.getSimpleName();
                         issue3.className = type.getQualifiedName();
+                        issue3.source = "constructor";
                         allIssues.add(issue3);
                         break;
                 }
@@ -400,6 +420,136 @@ public class ParsingServiceImpl implements ParsingService {
                 System.err.println("检测构造器问题时出错: " + e.getMessage());
             }
         });
+    }
+
+    // ====================== 5. detectMemoryReplicationIssues ======================
+    @Override
+    public void detectMemoryReplicationIssues(CtType<?> type, Set<String> classDeps) throws IOException {
+        String className = type.getQualifiedName();
+        
+        // 1. Check for Serializable interface
+        for (CtTypeReference<?> interfaceRef : type.getSuperInterfaces()) {
+            String interfaceName = interfaceRef.getQualifiedName();
+            if (interfaceName.equals("java.io.Serializable")) {
+                IssueInfo issue = new IssueInfo();
+                issue.severity = "Medium";
+                issue.message = "Implements Serializable - Object serialization may cause memory replication";
+                issue.location = "in class " + type.getSimpleName();
+                issue.className = className;
+                issue.source = "memory_replication";
+                allIssues.add(issue);
+                break;
+            }
+        }
+        
+        // 2. Check for Cloneable interface  
+        for (CtTypeReference<?> interfaceRef : type.getSuperInterfaces()) {
+            String interfaceName = interfaceRef.getQualifiedName();
+            if (interfaceName.equals("java.lang.Cloneable")) {
+                IssueInfo issue = new IssueInfo();
+                issue.severity = "Medium";
+                issue.message = "Implements Cloneable - Object cloning may cause memory replication";
+                issue.location = "in class " + type.getSimpleName();
+                issue.className = className;
+                issue.source = "memory_replication";
+                allIssues.add(issue);
+                break;
+            }
+        }
+        
+        // 3. Check for MappedByteBuffer usage
+        type.filterChildren(new TypeFilter<>(CtConstructorCall.class)).forEach(ctor -> {
+            CtConstructorCall<?> call = (CtConstructorCall<?>) ctor;
+            CtTypeReference<?> ref = call.getType();
+            if (ref != null && ref.getQualifiedName().equals("java.nio.MappedByteBuffer")) {
+                IssueInfo issue = new IssueInfo();
+                issue.severity = "High";
+                issue.message = "Uses MappedByteBuffer - Memory-mapped files can cause memory replication";
+                issue.location = "in class " + type.getSimpleName();
+                issue.className = className;
+                issue.source = "memory_replication";
+                allIssues.add(issue);
+            }
+        });
+        
+        // 4. Check for FileChannel.map() invocations
+        type.filterChildren(new TypeFilter<>(CtInvocation.class)).forEach(inv -> {
+            CtInvocation<?> invocation = (CtInvocation<?>) inv;
+            CtExecutableReference<?> execRef = invocation.getExecutable();
+            if (execRef != null && execRef.getSignature().contains("java.nio.channels.FileChannel.map")) {
+                IssueInfo issue = new IssueInfo();
+                issue.severity = "High";
+                issue.message = "Uses FileChannel.map() - Memory-mapped files can cause memory replication";
+                issue.location = "in class " + type.getSimpleName();
+                issue.className = className;
+                issue.source = "memory_replication";
+                allIssues.add(issue);
+            }
+        });
+        
+        // 5. Check for distributed caching frameworks
+        String[] distributedFrameworks = {
+            "org.jgroups", "com.hazelcast", "net.sf.ehcache", "org.infinispan", 
+            "redis.clients.jedis", "org.apache.ignite", "org.ehcache"
+        };
+        
+        for (CtTypeReference<?> dep : type.getReferencedTypes()) {
+            String depName = dep.getQualifiedName();
+            for (String framework : distributedFrameworks) {
+                if (depName.startsWith(framework)) {
+                    IssueInfo issue = new IssueInfo();
+                    issue.severity = "High";
+                    issue.message = "Uses distributed caching framework '" + depName + "' - May cause memory replication across nodes";
+                    issue.location = "in class " + type.getSimpleName();
+                    issue.className = className;
+                    issue.source = "memory_replication";
+                    allIssues.add(issue);
+                    break;
+                }
+            }
+        }
+        
+        // 6. Check for RMI usage
+        String[] rmiClasses = {
+            "java.rmi", "javax.rmi", "java.rmi.server", "java.rmi.registry"
+        };
+        
+        for (CtTypeReference<?> dep : type.getReferencedTypes()) {
+            String depName = dep.getQualifiedName();
+            for (String rmiClass : rmiClasses) {
+                if (depName.startsWith(rmiClass)) {
+                    IssueInfo issue = new IssueInfo();
+                    issue.severity = "High";
+                    issue.message = "Uses RMI '" + depName + "' - Remote method invocation can cause object serialization/replication";
+                    issue.location = "in class " + type.getSimpleName();
+                    issue.className = className;
+                    issue.source = "memory_replication";
+                    allIssues.add(issue);
+                    break;
+                }
+            }
+        }
+        
+        // 7. Check for JMS usage
+        String[] jmsClasses = {
+            "javax.jms", "jakarta.jms"
+        };
+        
+        for (CtTypeReference<?> dep : type.getReferencedTypes()) {
+            String depName = dep.getQualifiedName();
+            for (String jmsClass : jmsClasses) {
+                if (depName.startsWith(jmsClass)) {
+                    IssueInfo issue = new IssueInfo();
+                    issue.severity = "Medium";
+                    issue.message = "Uses JMS '" + depName + "' - Message passing may involve object serialization";
+                    issue.location = "in class " + type.getSimpleName();
+                    issue.className = className;
+                    issue.source = "memory_replication";
+                    allIssues.add(issue);
+                    break;
+                }
+            }
+        }
     }
 
     public void writeModifiers(Set<ModifierKind> modifiers, BufferedWriter writer, String indent, String context) throws IOException {
@@ -417,34 +567,60 @@ public class ParsingServiceImpl implements ParsingService {
 
 
     public void parseJspFiles(File jspFile) {   // ← 改成只接收 File
-        String generatedPath = null;
         try {
-            generatedPath = analyzeSingleJsp(jspFile, "./target/jsp-gen");
+            System.out.println("📝 记录 JSP 文件: " + jspFile.getName());
+            
+            // 创建简单的 JavaClassInfo 对象，仅记录原始 JSP 文件
+            JavaClassInfo jspClassInfo = new JavaClassInfo();
+            jspClassInfo.setFullName(jspFile.getAbsolutePath());
+            jspClassInfo.setSimpleName(jspFile.getName());
+            jspClassInfo.setPackageName("");
+            jspClassInfo.setKind("JSP File");
+            jspClassInfo.setIsGeneratedFromJsp(true);
+            jspClassInfo.setOriginalJspFile(jspFile.getAbsolutePath());
+            
+            // 添加到 javaClasses 列表
+            javaClasses.add(jspClassInfo);
+            
+            // 添加警告 issue
+            IssueInfo warning = new IssueInfo();
+            warning.setSeverity("Medium");
+            warning.setMessage("使用 JSP 文件可能导致扩展性问题，建议使用现代前端技术");
+            warning.setLocation(jspFile.getAbsolutePath());
+            warning.setClassName(jspFile.getName());
+            warning.setSource("jsp");
+            
+            analysisResult.getIssues().add(warning);
+            allIssues.add(warning);
 
-            if (generatedPath == null || generatedPath.isEmpty()) return;
-
-            File genFile = new File(generatedPath);
-            System.out.println("🔄 正在解析 JSP 生成的 Servlet: " + genFile.getName());
-
-            // 调用 parseJavaFile（它会自动把结果加入 javaClasses）
-            parseJavaFile(genFile);   // 如果你 parseJavaFile 现在不需要第二个参数，就这样调用
-
-            // 【关键】给刚解析的这个类打上 JSP 生成标记
-            if (!javaClasses.isEmpty()) {
-                JavaClassInfo lastAdded = javaClasses.get(javaClasses.size() - 1);
-                lastAdded.setIsGeneratedFromJsp(true);
-                lastAdded.setOriginalJspFile(jspFile.getAbsolutePath());  // 记录原始 JSP 路径
+            // ==================== 解析 JSP 生成的 Servlet 代码 ====================
+            // 创建临时输出目录
+            Path tempDir = Files.createTempDirectory("jsp_analysis");
+            try {
+                String generatedJavaPath = analyzeSingleJsp(jspFile, tempDir.toString());
+                if (generatedJavaPath != null) {
+                    File generatedJavaFile = new File(generatedJavaPath);
+                    if (generatedJavaFile.exists()) {
+                        System.out.println("🔍 解析 JSP 生成的 Servlet: " + generatedJavaFile.getName());
+                        parseJavaFile(generatedJavaFile);
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("⚠️ JSP 代码分析失败: " + jspFile.getName() + " - " + e.getMessage());
+            } finally {
+                // 清理临时目录
+                try {
+                    Files.walk(tempDir)
+                         .sorted(Comparator.reverseOrder())
+                         .map(Path::toFile)
+                         .forEach(File::delete);
+                } catch (IOException e) {
+                    // 忽略清理错误
+                }
             }
 
         } catch (Exception e) {
-            System.out.println("❌ JSP 处理异常: " + jspFile.getName() + " → " + e.getMessage());
-        } finally {
-            // 删除临时文件
-            if (generatedPath != null && !generatedPath.isEmpty()) {
-                try {
-                    Files.deleteIfExists(Path.of(generatedPath));
-                } catch (IOException ignored) {}
-            }
+            System.out.println("❌ JSP 记录异常: " + jspFile.getName() + " → " + e.getMessage());
         }
     }
 
@@ -882,48 +1058,26 @@ public class ParsingServiceImpl implements ParsingService {
 
         for (Path path : paths) {
             File file = path.toFile();
+            System.out.println("📝 记录 JSF 文件: " + file.getName());
+            
+            // 创建简单的 JSF 文件信息，仅记录文件路径
             JsfFileInfo jsfInfo = new JsfFileInfo();
             jsfInfo.filePath = file.getAbsolutePath();
-
-            try {
-                org.jsoup.nodes.Document doc = Jsoup.parse(file, "UTF-8");
-
-                // 1. 命名空间
-                Elements htmlTags = doc.select("html");
-                if (!htmlTags.isEmpty()) {
-                    for (org.jsoup.nodes.Attribute attr : htmlTags.first().attributes()) {
-                        if (attr.getKey().startsWith("xmlns:")) {
-                            jsfInfo.namespaces.add(attr.getKey() + " = " + attr.getValue());
-                        }
-                    }
-                }
-
-                // 2. ui:include
-                Elements includes = doc.select("ui|include, include[src]");
-                for (org.jsoup.nodes.Element inc : includes) {
-                    String src = inc.attr("src");
-                    if (!src.isEmpty()) jsfInfo.includes.add(src);
-                }
-
-                // 3. EL 表达式 #{bean.xxx}
-                Set<String> beans = new TreeSet<>();
-                Pattern elPattern = Pattern.compile("#\\{([a-zA-Z0-9_]+)");
-                Matcher matcher = elPattern.matcher(doc.text());
-                while (matcher.find()) beans.add(matcher.group(1));
-
-                // 属性中也搜索
-                doc.select("*").forEach(el -> el.attributes().forEach(attr -> {
-                    matcher.reset(attr.getValue());
-                    while (matcher.find()) beans.add(matcher.group(1));
-                }));
-
-                jsfInfo.beans.addAll(beans);
-                jsfFiles.add(jsfInfo);
-                analysisResult.getJsfFiles().add(jsfInfo);
-
-            } catch (Exception e) {
-                System.out.println("JSF 解析失败: " + file.getName() + " → " + e.getMessage());
-            }
+            // namespaces, includes, beans 列表保持为空
+            
+            jsfFiles.add(jsfInfo);
+            analysisResult.getJsfFiles().add(jsfInfo);
+            
+            // 添加警告 issue
+            IssueInfo warning = new IssueInfo();
+            warning.setSeverity("Medium");
+            warning.setMessage("使用 JSF 文件可能导致扩展性问题，建议使用现代前端框架");
+            warning.setLocation(file.getAbsolutePath());
+            warning.setClassName(file.getName());
+            warning.setSource("jsf");
+            
+            analysisResult.getIssues().add(warning);
+            allIssues.add(warning);
         }
 
         // ====================== 生成 JSF JSON ======================
@@ -932,6 +1086,7 @@ public class ParsingServiceImpl implements ParsingService {
         jsonFileService.generateJsonArray(jsfFiles, jsfJsonFile.getAbsolutePath());
 
         System.out.println("✅ JSF JSON 报告生成完成 → " + jsfJsonFile.getAbsolutePath());
+        System.out.println("   共记录 " + paths.size() + " 个 JSF 文件（仅文件名）");
     }
 
     @Override
@@ -963,6 +1118,7 @@ public class ParsingServiceImpl implements ParsingService {
         File facesConfigXmlOutput = new File(outputFolder, OutputPath.FACES_CONFIG_PARSE_RESULT_PATH);
         File applicationXmlOutput = new File(outputFolder, OutputPath.EAR_APPLICATION_PARSE_RESULT_PATH);
         File jsfOutput          = new File(outputFolder, OutputPath.JSF_PARSE_RESULT_PATH);
+        File issuesOutput       = new File(outputFolder, OutputPath.ISSUES_PARSE_RESULT_PATH);
 
         analysisResult.getJavaClasses().clear();
         if (analysisResult.getJsfFiles() != null) analysisResult.getJsfFiles().clear();
@@ -1000,6 +1156,15 @@ public class ParsingServiceImpl implements ParsingService {
         parseEjbJarXml(ejbJarXmlOutput, sourceFolderDAO);
         parseFacesConfigXml(facesConfigXmlOutput, sourceFolderDAO);
         parseApplicationXml(applicationXmlOutput, sourceFolderDAO);
+
+        // 生成 issues JSON 报告
+        if (!allIssues.isEmpty()) {
+            jsonFileService.generateJsonArray(allIssues, issuesOutput.getAbsolutePath());
+            System.out.println("✅ Issues JSON 报告生成完成 → " + issuesOutput.getAbsolutePath());
+            System.out.println("   共包含 " + allIssues.size() + " 个问题");
+        } else {
+            System.out.println("ℹ️ 未发现任何问题，跳过 Issues JSON 报告生成");
+        }
 
         // 4. 统一生成 JSON + 存数据库
 
@@ -1051,6 +1216,119 @@ public class ParsingServiceImpl implements ParsingService {
                 }
             }
             xmlData.put("plugins", plugins);
+
+            // ==================== 应用服务器兼容性分析 ====================
+            Map<String, Object> compatibility = new HashMap<>();
+            
+            // 1. Java 版本兼容性分析
+            List<String> supportedJavaVersions = Arrays.asList("8", "11", "17", "21");
+            boolean javaVersionCompatible = false;
+            String javaCompatibilityAssessment = "未知";
+            
+            if (javaVersion.isEmpty()) {
+                javaCompatibilityAssessment = "未指定 Java 版本";
+                
+                IssueInfo javaIssue = new IssueInfo();
+                javaIssue.severity = "Medium";
+                javaIssue.message = "未指定 Java 版本，可能导致构建或运行问题";
+                javaIssue.location = "pom.xml";
+                javaIssue.className = "pom.xml";
+                javaIssue.source = "pom_analysis";
+                allIssues.add(javaIssue);
+            } else {
+                // 提取主要版本号（例如 "1.8" -> "8", "11" -> "11"）
+                String majorVersion = javaVersion;
+                if (javaVersion.startsWith("1.")) {
+                    majorVersion = javaVersion.substring(2);
+                }
+                // 移除非数字字符
+                majorVersion = majorVersion.replaceAll("[^0-9]", "");
+                
+                if (supportedJavaVersions.contains(majorVersion)) {
+                    javaVersionCompatible = true;
+                    javaCompatibilityAssessment = "兼容 (Java " + majorVersion + ")";
+                } else {
+                    javaCompatibilityAssessment = "不兼容 (Java " + majorVersion + "，支持版本: " + String.join(", ", supportedJavaVersions) + ")";
+                    
+                    // 添加问题报告
+                    IssueInfo javaIssue = new IssueInfo();
+                    javaIssue.severity = "High";
+                    javaIssue.message = "Java 版本 " + majorVersion + " 可能与应用服务器不兼容";
+                    javaIssue.location = "pom.xml";
+                    javaIssue.className = "pom.xml";
+                    javaIssue.source = "pom_analysis";
+                    allIssues.add(javaIssue);
+                }
+            }
+            
+            compatibility.put("javaVersionCompatible", javaVersionCompatible);
+            compatibility.put("javaCompatibilityAssessment", javaCompatibilityAssessment);
+            
+            // 2. 依赖大小和性能影响分析
+            int dependencyCount = deps.size();
+            String dependencySizeAssessment;
+            if (dependencyCount > 50) {
+                dependencySizeAssessment = "大型依赖 (" + dependencyCount + " 个依赖)，可能影响 WAR 包大小和启动时间";
+                
+                IssueInfo depIssue = new IssueInfo();
+                depIssue.severity = "Medium";
+                depIssue.message = "项目包含大量依赖 (" + dependencyCount + " 个)，可能导致 WAR 包超过 500MB";
+                depIssue.location = "pom.xml";
+                depIssue.className = "pom.xml";
+                depIssue.source = "pom_analysis";
+                allIssues.add(depIssue);
+            } else if (dependencyCount > 20) {
+                dependencySizeAssessment = "中等依赖 (" + dependencyCount + " 个依赖)";
+            } else {
+                dependencySizeAssessment = "小型依赖 (" + dependencyCount + " 个依赖)";
+            }
+            
+            compatibility.put("dependencyCount", dependencyCount);
+            compatibility.put("dependencySizeAssessment", dependencySizeAssessment);
+            
+            // 3. Fat Jar/Uber Jar 插件检测
+            boolean hasFatJarPlugin = plugins.stream().anyMatch(plugin -> 
+                plugin.contains("spring-boot-maven-plugin") || 
+                plugin.contains("maven-shade-plugin") ||
+                plugin.contains("maven-assembly-plugin")
+            );
+            
+            if (hasFatJarPlugin) {
+                compatibility.put("fatJarWarning", "检测到 Fat Jar/Uber Jar 插件，可能不适用于传统应用服务器部署");
+                
+                IssueInfo fatJarIssue = new IssueInfo();
+                fatJarIssue.severity = "High";
+                fatJarIssue.message = "检测到 Fat Jar/Uber Jar 插件，传统应用服务器需要 WAR 部署";
+                fatJarIssue.location = "pom.xml";
+                fatJarIssue.className = "pom.xml";
+                fatJarIssue.source = "pom_analysis";
+                allIssues.add(fatJarIssue);
+            } else {
+                compatibility.put("fatJarWarning", "未检测到 Fat Jar 插件，适合传统应用服务器部署");
+            }
+            
+            // 4. 整体容器兼容性评估
+            boolean overallCompatible = javaVersionCompatible && !hasFatJarPlugin && dependencyCount <= 100;
+            String overallAssessment;
+            
+            if (overallCompatible) {
+                overallAssessment = "项目结构与应用服务器兼容性良好";
+            } else {
+                overallAssessment = "项目可能存在与应用服务器的兼容性问题";
+                
+                IssueInfo overallIssue = new IssueInfo();
+                overallIssue.severity = "Medium";
+                overallIssue.message = "项目结构可能与应用服务器存在兼容性问题";
+                overallIssue.location = "pom.xml";
+                overallIssue.className = "pom.xml";
+                overallIssue.source = "pom_analysis";
+                allIssues.add(overallIssue);
+            }
+            
+            compatibility.put("overallCompatible", overallCompatible);
+            compatibility.put("overallAssessment", overallAssessment);
+            
+            xmlData.put("containerCompatibility", compatibility);
 
             NodeList profiles = doc.getElementsByTagName("profile");
             xmlData.put("profileCount", profiles.getLength());

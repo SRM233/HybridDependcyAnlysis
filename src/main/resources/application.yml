@@ -19,3 +19,8 @@ mybatis:
   mapper-locations: mapper/*.xml
   configuration:
     map-underscore-to-camel-case: true
+config:
+  jwt:
+    expire: 3600
+    secret: hICStkIMhe8tZ5QSIBPf50wJNQXRm1ayZjuQUYKE2U0vlpm1HhaTr2Bx0NDlk1t5Dy0g52JUGkLX4wtf1nFHPq
+    header: Authorization

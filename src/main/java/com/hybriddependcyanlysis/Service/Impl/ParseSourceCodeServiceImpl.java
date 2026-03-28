@@ -1,6 +1,8 @@
 package com.hybriddependcyanlysis.Service.Impl;
 import Common.OutputFileName;
 import Common.OutputPath;
+import Common.Result;
+import Common.UserContext.UserContextHolder;
 import com.hybriddependcyanlysis.Mapper.IngestMapper;
 import com.hybriddependcyanlysis.Mapper.AstMapper;
 import com.hybriddependcyanlysis.Mapper.FileMapper;
@@ -18,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.rmi.RemoteException;
 import java.time.LocalDateTime;
 
 @Service
@@ -43,7 +46,12 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
 
     @Override
     @Transactional
-    public void staticParsing(Integer userId, Integer sourceFolderId) throws IOException {
+    public void staticParsing(Integer sourceFolderId) throws IOException {
+
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RemoteException("User not authenticated");
+        }
 
         SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
 
@@ -88,7 +96,11 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
 //    }
 
     @Override
-    public void parseJspFile(Integer userId, Integer sourceFolderId) throws IOException {
+    public void parseJspFile(Integer sourceFolderId) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RemoteException("User not authenticated");
+        }
         SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
         Path outputRoot = checkOutputFolder(sourceFolderDAO.getDirPath());
 
@@ -102,7 +114,11 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
     }
 
     @Override
-    public void parseWebXmlFile(Integer userId, Integer sourceFolderId) throws IOException {
+    public void parseWebXmlFile(Integer sourceFolderId) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RemoteException("User not authenticated");
+        }
         SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
         Path outputRoot = checkOutputFolder(sourceFolderDAO.getDirPath());
 
@@ -116,7 +132,11 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
     }
 
     @Override
-    public void ParsePersistenceXmlFile(Integer userId, Integer sourceFolderId) throws IOException {
+    public void ParsePersistenceXmlFile(Integer sourceFolderId) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RemoteException("User not authenticated");
+        }
         SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
         Path outputRoot = checkOutputFolder(sourceFolderDAO.getDirPath());
 
@@ -157,7 +177,11 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
     }
 
     @Override
-    public void ParseEjbJarXmlFile(Integer userId, Integer sourceFolderId) throws IOException {
+    public void ParseEjbJarXmlFile(Integer sourceFolderId) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RemoteException("User not authenticated");
+        }
         SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
         Path outputRoot = checkOutputFolder(sourceFolderDAO.getDirPath());
 
@@ -196,7 +220,11 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
     
 
     @Override
-    public void ParseFacesConfigXmlFile(Integer userId, Integer sourceFolderId) throws IOException {
+    public void ParseFacesConfigXmlFile(Integer sourceFolderId) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RemoteException("User not authenticated");
+        }
         SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
         Path outputRoot = checkOutputFolder(sourceFolderDAO.getDirPath());
 
@@ -235,7 +263,11 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
     }
 
     @Override
-    public void ParseApplicationXmlFile(Integer userId, Integer sourceFolderId) throws IOException {
+    public void ParseApplicationXmlFile(Integer sourceFolderId) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RemoteException("User not authenticated");
+        }
         SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
         Path outputRoot = checkOutputFolder(sourceFolderDAO.getDirPath());
 
@@ -247,7 +279,11 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
     }
 
     @Override
-    public void parseJsfFile(Integer userId, Integer sourceFolderId) throws IOException {
+    public void parseJsfFile(Integer sourceFolderId) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RemoteException("User not authenticated");
+        }
         SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
         Path outputRoot = checkOutputFolder(sourceFolderDAO.getDirPath());
 
@@ -261,13 +297,21 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
 
     @Transactional
     @Override
-    public void staticParseFile(Integer userId, Integer sourceFolderId) throws IOException {
+    public void staticParseFile(Integer sourceFolderId) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RemoteException("User not authenticated");
+        }
         SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
         parsingService.staticParseFiles(sourceFolderDAO);
     }
 
     @Override
-    public void parsePomXmlFile(Integer userId, Integer sourceFolderId) throws IOException {
+    public void parsePomXmlFile(Integer sourceFolderId) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RemoteException("User not authenticated");
+        }
         SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
 
         Path outputPath = checkOutputFolder(sourceFolderDAO.getDirPath());
@@ -465,8 +509,96 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
 //
     }
 
+    @Override
+    @Transactional
+    public void deleteJavaParseResults(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        parseSourceCodeMapper.deleteJavaParseOutputBySourceFolder(userId, sourceFolderId);
+        parseSourceCodeMapper.deleteJavaErrorBySourceFolder(userId, sourceFolderId);
+    }
 
+    @Override
+    @Transactional
+    public void deleteJspParseResults(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        parseSourceCodeMapper.deleteJspParseOutputBySourceFolder(userId, sourceFolderId);
+        parseSourceCodeMapper.deleteJspErrorBySourceFolder(userId, sourceFolderId);
+    }
 
+    @Override
+    @Transactional
+    public void deleteWebXmlParseResults(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        parseSourceCodeMapper.deleteWebXmlParseOutput(userId, sourceFolderId);
+    }
 
+    @Override
+    @Transactional
+    public void deletePersistenceXmlParseResults(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        parseSourceCodeMapper.deletePersistenceXmlParseOutput(userId, sourceFolderId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteEjbJarXmlParseResults(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        parseSourceCodeMapper.deleteEjbJarXmlParseOutput(userId, sourceFolderId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteFacesConfigXmlParseResults(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        parseSourceCodeMapper.deleteFacesConfigXmlParseOutput(userId, sourceFolderId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteApplicationXmlParseResults(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        parseSourceCodeMapper.deleteApplicationXmlParseOutput(userId, sourceFolderId);
+    }
+
+    @Override
+    @Transactional
+    public void deletePomXmlParseResults(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        parseSourceCodeMapper.deletePomXmlParseOutput(userId, sourceFolderId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteJsfParseResults(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        parseSourceCodeMapper.deleteJsfParseOutput(userId, sourceFolderId);
+    }
 
 }

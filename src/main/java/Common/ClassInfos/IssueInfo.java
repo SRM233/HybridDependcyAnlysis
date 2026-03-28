@@ -12,4 +12,5 @@ public class IssueInfo {
     public String message;
     public String location;
     public String className;
+    public String source;     // invocation, constructor, jsp, jsf, etc.
 }

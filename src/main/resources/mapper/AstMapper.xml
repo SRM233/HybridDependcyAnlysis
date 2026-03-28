@@ -126,7 +126,7 @@
     </select>
     <select id="getAnalysisResultBySourceFolderId"
             resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO">
-        select * from hybridanalysis.analysis_result where source_folder_id = #{id}
+        select * from hybridanalysis.analysis_results where source_folder_id = #{id}
     </select>
 
 </mapper>

@@ -12,7 +12,7 @@ import java.util.List;
 @Data
 public class UserDAO {
     private Integer id;
-    private String userName;
+    private String username;
     private String password;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;

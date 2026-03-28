@@ -44,4 +44,6 @@ public interface ParsingService {
     void staticParseFiles(SourceFolderDAO sourceFolderDAO) throws IOException;
 
     void parsePomXmlFile(File pomOutput, SourceFolderDAO sourceFolderDAO) throws IOException;
+    
+    void detectMemoryReplicationIssues(CtType<?> type, Set<String> classDeps) throws IOException;
 }

@@ -1,5 +1,7 @@
 package com.hybriddependcyanlysis.Service.Impl;
 
+import Common.Result;
+import Common.UserContext.UserContextHolder;
 import com.hybriddependcyanlysis.Mapper.FileMapper;
 import com.hybriddependcyanlysis.Mapper.IngestMapper;
 import com.hybriddependcyanlysis.POJO.DAO.SourceFolderDAO;
@@ -31,24 +33,27 @@ public class IngestServiceImpl implements IngestService {
 
     @Transactional
     @Override
-    public void sourceFolderIngest(UserFolderDTO userFileDTO) {
+    public void sourceFolderIngest(UserFolderDTO userFolderDTO) {
+        Integer userId = UserContextHolder.getUserId();
+
+        userFolderDTO.setId(userId);
+
         try {
             SourceFolderDAO sourceFolderDAO = new SourceFolderDAO();
-            Integer userId = userFileDTO.getId();
 
             // Create a unique folder for this upload
-            String uniqueFolderName = userFileDTO.getFile().getOriginalFilename()
+            String uniqueFolderName = userFolderDTO.getFile().getOriginalFilename()
                     .replaceAll("\\.zip$", "") + "_" + System.currentTimeMillis();
 
             Path storageDir = Paths.get("E:/FYP/ProgramStorage", uniqueFolderName);
             Files.createDirectories(storageDir);
 
             // Copy uploaded file into that folder
-            Path storagePath = storageDir.resolve(userFileDTO.getFile().getOriginalFilename());
-            Files.copy(userFileDTO.getFile().getInputStream(), storagePath, StandardCopyOption.REPLACE_EXISTING);
+            Path storagePath = storageDir.resolve(userFolderDTO.getFile().getOriginalFilename());
+            Files.copy(userFolderDTO.getFile().getInputStream(), storagePath, StandardCopyOption.REPLACE_EXISTING);
             sourceFolderDAO.setZipPath(storagePath.toString());
             sourceFolderDAO.setUserId(userId);
-            sourceFolderDAO.setZipName(userFileDTO.getFile().getOriginalFilename());
+            sourceFolderDAO.setZipName(userFolderDTO.getFile().getOriginalFilename());
             sourceFolderDAO.setDirPath(storageDir.toString());
 
             sourceFolderDAO.setCreateTime(LocalDateTime.now());
@@ -103,7 +108,7 @@ public class IngestServiceImpl implements IngestService {
 //                }
 //            }
 
-            System.out.println("Unpack Finish: " + targetDir);
+//            System.out.println("Unpack Finish: " + targetDir);
         } catch (IOException e) {
             throw new RuntimeException("Unpack failed", e);
         }

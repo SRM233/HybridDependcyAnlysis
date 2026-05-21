@@ -1,5 +1,6 @@
 package Common.ClassInfos;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -10,11 +11,13 @@ import java.util.List;
 @AllArgsConstructor
 @Data
 @NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class JavaClassInfo {
     private List<String> imports = new ArrayList<>();
     private List<AnnotationInfo> annotations = new ArrayList<>();
     private String fullName;           // 全限定名 com.haroon.model.Student
     private String simpleName;         // Student
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private String packageName;        // com.haroon.model
     private String kind;               // "Class" 或 "Interface"
 //    private String fullSourceCode;
@@ -22,8 +25,6 @@ public class JavaClassInfo {
     private List<FieldInfo> fields = new ArrayList<>();
     private List<MethodInfo> methods = new ArrayList<>();
     private List<IssueInfo> issues = new ArrayList<>();   // 该类触发的所有 Issue
-    private boolean isGeneratedFromJsp = false;   // 新增
-    private String originalJspFile;               // 可选：记录原始 JSP 名
 
 
     public void addModifier(String modifier) {
@@ -44,14 +45,6 @@ public class JavaClassInfo {
 
     public void addIssue(IssueInfo issue) {
         this.issues.add(issue);
-    }
-
-    public boolean getIsGeneratedFromJsp() {
-        return this.isGeneratedFromJsp;
-    }
-
-    public void setIsGeneratedFromJsp(boolean b) {
-        this.isGeneratedFromJsp = b;
     }
 
     public void addImport(String imp) {

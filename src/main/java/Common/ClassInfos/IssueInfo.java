@@ -13,4 +13,5 @@ public class IssueInfo {
     public String location;
     public String className;
     public String source;     // invocation, constructor, jsp, jsf, etc.
+    public String type;       // StatefulSession, FileSystemDependency, JNDIDependency, PortBindingRisk, ThreadLocalUse, memory_replication, etc.
 }

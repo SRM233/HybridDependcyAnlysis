@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class AnalysisResultDAO {
+public class AnalysisReportDAO {
     private Integer id;
     private String name;
     private LocalDateTime createTime;

@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.HashMap;
 
 @RestController
-@RequestMapping("StaticAnalysis")
+@RequestMapping("/StaticAnalysis")
 @Slf4j
 public class StaticAnalysisController {
 
@@ -40,8 +40,8 @@ public class StaticAnalysisController {
 
     @PostMapping("/JspFilesCount")
     public Result JspFilesCount(@RequestBody UserDTO userDTO) throws IOException {
-        staticAnalysisService.JspFileCount(userDTO);
-        return Result.success();
+        Object report = staticAnalysisService.JspFileCount(userDTO);
+        return Result.success(report);
     }
 
     //用户注解请求
@@ -51,11 +51,11 @@ public class StaticAnalysisController {
 
         log.info("GetAnnotationCount:{}", userDTO);
         try {
-            staticAnalysisService.AnnotationCount(userDTO);
+            Object report = staticAnalysisService.AnnotationCount(userDTO);
+            return Result.success(report);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return Result.success();
     }
 
     @PostMapping("/webXMlFileAnalysis")
@@ -66,8 +66,8 @@ public class StaticAnalysisController {
         }
         userDTO.setId(userId);
         log.info("GetWebXMlFileAnalysis:{}", userDTO);
-        staticAnalysisService.analyzeWebXml(userDTO);
-        return Result.success();
+        Object report = staticAnalysisService.analyzeWebXml(userDTO);
+        return Result.success(report);
     }
 
     @PostMapping("/fileStoreAnalysis")
@@ -78,8 +78,8 @@ public class StaticAnalysisController {
         }
         userDTO.setId(userId);
         log.info("FileStoreAnalysis:{}", userDTO);
-        staticAnalysisService.FileStoreAnalysis(userDTO);
-        return Result.success();
+        Object report = staticAnalysisService.FileStoreAnalysis(userDTO);
+        return Result.success(report);
     }
 
     @PostMapping("/persistenceAnalysis")
@@ -90,8 +90,8 @@ public class StaticAnalysisController {
         }
         userDTO.setId(userId);
         log.info("persistenceAnalysis:{}", userDTO);
-        staticAnalysisService.persistenceAnalysis(userDTO);
-        return Result.success();
+        Object report = staticAnalysisService.persistenceAnalysis(userDTO);
+        return Result.success(report);
     }
 
     @PostMapping("/ejbJarAnalysis")
@@ -102,8 +102,8 @@ public class StaticAnalysisController {
         }
         userDTO.setId(userId);
         log.info("ejbJarAnalysis:{}", userDTO);
-        staticAnalysisService.ejbJarAnalysis(userDTO);
-        return Result.success();
+        Object report = staticAnalysisService.ejbJarAnalysis(userDTO);
+        return Result.success(report);
     }
 
     @PostMapping("/pomXmlAnalysis")
@@ -113,9 +113,9 @@ public class StaticAnalysisController {
             return Result.fail("User not authenticated");
         }
         userDTO.setId(userId);
-        log.info("ejbJarAnalysis:{}", userDTO);
-        staticAnalysisService.pomXmlAnalysis(userDTO);
-        return Result.success();
+        log.info("pomXmlAnalysis:{}", userDTO);
+        Object report = staticAnalysisService.pomXmlAnalysis(userDTO);
+        return Result.success(report);
     }
 
     @PostMapping("/facesXmlAnalysis")
@@ -126,8 +126,8 @@ public class StaticAnalysisController {
         }
         userDTO.setId(userId);
         log.info("facesXmlAnalysis:{}", userDTO);
-        staticAnalysisService.facesXmlAnalysis(userDTO);
-        return Result.success();
+        Object report = staticAnalysisService.facesXmlAnalysis(userDTO);
+        return Result.success(report);
     }
 
     @DeleteMapping("/deleteAnnotationAnalysis")

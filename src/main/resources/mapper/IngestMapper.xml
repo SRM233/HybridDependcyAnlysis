@@ -6,11 +6,40 @@
 
 
     <insert id="insertSourceFolder" useGeneratedKeys="true" keyProperty="id">
-        insert into hybridanalysis.source_folders(user_id, zip_name, zip_path, create_time, update_time, dir_path, unpack_path)
+        insert into source_folder(user_id, zip_name, zip_path, create_time, update_time, dir_path, unpack_path)
         VALUES (#{userId}, #{zipName}, #{zipPath}, #{createTime}, #{updateTime}, #{dirPath}, #{unpackPath})
     </insert>
     <select id="getById" resultType="com.hybriddependcyanlysis.POJO.DAO.SourceFolderDAO">
-        select id, user_id, zip_name, zip_path, create_time, update_time, dir_path, unpack_path from hybridanalysis.source_folders
+        select id, user_id, zip_name, zip_path, create_time, update_time, dir_path, unpack_path from source_folder
         where id = #{sourceFolderId}
+    </select>
+    <select id="getSourceFolder" resultType="com.hybriddependcyanlysis.POJO.DAO.SourceFolderDAO">
+        select * from source_folder
+        <where>
+            <if test="id != null">
+                and id = #{id}
+            </if>
+            <if test="userId != null">
+                and user_id = #{userId}
+            </if>
+            <if test="zipName != null">
+                and zip_name = #{zipName}
+            </if>
+            <if test="zipPath != null and zipPath != ''">
+                and zip_path = #{zipPath}
+            </if>
+            <if test="dirPath != null and dirPath != ''">
+                and dir_path = #{dirPath}
+            </if>
+            <if test="unpackPath != null and unpackPath != ''">
+                and unpack_path = #{unpackPath}
+            </if>
+            <if test="createTime != null">
+                and create_time = #{createTime}
+            </if>
+            <if test="updateTime != null">
+                and update_time = #{updateTime}
+            </if>
+        </where>
     </select>
 </mapper>

@@ -1,5 +1,9 @@
 package Common.JWT;
 
+import Common.UserContext.UserContextHolder;
+import com.hybriddependcyanlysis.POJO.DAO.UserDAO;
+import com.hybriddependcyanlysis.POJO.DTO.UserLoginDTO;
+import com.hybriddependcyanlysis.Service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +20,9 @@ public class JwtInterceptor implements HandlerInterceptor {
     @Autowired
     private JwtConfig jwtConfig;
 
+    @Autowired
+    private UserService userService;
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         final String authHeader = request.getHeader(jwtConfig.getHeader());
@@ -23,6 +30,13 @@ public class JwtInterceptor implements HandlerInterceptor {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             final String token = authHeader.substring(7);
             if (jwtUtil.validateToken(token)) {
+
+                String username = jwtUtil.getUsernameFromToken(token);
+                UserDAO userDAO = userService.getUserByName(username);
+                UserLoginDTO userLoginDTO = new UserLoginDTO();
+                userLoginDTO.setUser(userDAO);
+                userLoginDTO.setToken(token);
+                UserContextHolder.setUser(userLoginDTO);
                 return true;
             }
         }

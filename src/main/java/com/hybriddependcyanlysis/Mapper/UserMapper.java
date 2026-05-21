@@ -9,20 +9,20 @@ import org.apache.ibatis.annotations.Select;
 
 @Mapper
 public interface UserMapper {
-    @Insert("insert into hybridanalysis.user (username, password, create_time, update_time) values (#{username}, #{password}, #{createTime}, #{updateTime})")
+    @Insert("insert into user (username, password, create_time, update_time) values (#{username}, #{password}, #{createTime}, #{updateTime})")
     void insertUser(UserDAO userDAO);
 
 
-    @Select("select * from hybridanalysis.user where username = #{username} and password = #{password}")
+    @Select("select * from user where username = #{username} and password = #{password}")
     UserDAO getUser(UserLoginDTO userLoginDTO);
 
 
-    @Select("select * from hybridanalysis.user where id = #{userId}")
+    @Select("select * from user where id = #{userId}")
     UserDAO getUserById(Integer userId);
 
-    @Delete("delete from hybridanalysis.user where id = #{userId}")
+    @Delete("delete from user where id = #{userId}")
     void deleteUser(Integer userId);
 
-    @Select("select * from hybridanalysis.user where username = #{username}")
+    @Select("select * from user where username = #{username}")
     UserDAO getUserByName(String username);
 }

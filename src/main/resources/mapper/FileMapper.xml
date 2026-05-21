@@ -6,19 +6,19 @@
 
 
     <insert id="insertFile">
-        insert into hybridanalysis.file (file_name, file_path, create_time, update_time, source_folder_id, unpack_path)
+        insert into file (file_name, file_path, create_time, update_time, source_folder_id, unpack_path)
             values (#{fileName}, #{filePath}, #{createTime}, #{updateTime}, #{sourceFolderId}, #{unpackPath})
     </insert>
     <delete id="deleteFile">
-        delete from hybridanalysis.file where source_folder_id = #{sourceFolderId}
+        delete from file where source_folder_id = #{sourceFolderId}
 
     </delete>
     <select id="getFileBySourceFolderId" resultType="com.hybriddependcyanlysis.POJO.DAO.FileDAO">
-        select id, file_name, file_path, create_time, update_time, source_folder_id, unpack_path from hybridanalysis.file
+        select id, file_name, file_path, create_time, update_time, source_folder_id, unpack_path from file
         where source_folder_id = #{sourceFolderId}
     </select>
     <select id="getFileIdByName" resultType="java.lang.Integer">
-        select id from hybridanalysis.file
+        select id from file
         <where>
             file_name like concat('%', #{name}, '%')
         </where>

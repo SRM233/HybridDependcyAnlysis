@@ -1,7 +1,7 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/
+    url: jdbc:mysql://localhost:3306/hybridanalysis?useSSL=false&serverTimezone=UTC
     username: root
     password: root
   servlet:
@@ -24,3 +24,10 @@ config:
     expire: 3600
     secret: hICStkIMhe8tZ5QSIBPf50wJNQXRm1ayZjuQUYKE2U0vlpm1HhaTr2Bx0NDlk1t5Dy0g52JUGkLX4wtf1nFHPq
     header: Authorization
+
+
+pagehelper:
+  helper-dialect: mysql
+  reasonable: true
+  support-methods-arguments: true
+  params: count=countSql

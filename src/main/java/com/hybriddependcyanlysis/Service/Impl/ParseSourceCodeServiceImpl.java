@@ -1,15 +1,15 @@
 package com.hybriddependcyanlysis.Service.Impl;
 import Common.OutputFileName;
 import Common.OutputPath;
-import Common.Result;
 import Common.UserContext.UserContextHolder;
 import com.hybriddependcyanlysis.Mapper.IngestMapper;
-import com.hybriddependcyanlysis.Mapper.AstMapper;
 import com.hybriddependcyanlysis.Mapper.FileMapper;
 import com.hybriddependcyanlysis.Mapper.ParseSourceCodeMapper;
 import com.hybriddependcyanlysis.POJO.DAO.*;
+import com.hybriddependcyanlysis.Service.JsonFileService;
 import com.hybriddependcyanlysis.Service.ParseSourceCodeService;
-import com.hybriddependcyanlysis.Service.ParsingService;
+import Common.Util.ParsingUtil;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -33,15 +33,17 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
     private FileMapper fileMapper;
 
     @Autowired
-    private ParsingService ParsingService;
-
-    @Autowired
-    private AstMapper astMapper;
-
-    @Autowired
     private IngestMapper ingestMapper;
+
     @Autowired
-    private ParsingService parsingService;
+    private JsonFileService jsonFileService;
+
+    private ParsingUtil parsingUtil;
+
+    @PostConstruct
+    public void init() {
+        this.parsingUtil = new ParsingUtil(jsonFileService);
+    }
 
 
     @Override
@@ -149,7 +151,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
 
     private void ParsePersistenceXmlFiles(File parsePersistenceXmlParseOutput, SourceFolderDAO sourceFolderDAO) {
         try {
-            ParsingService.parsePersistenceXml(parsePersistenceXmlParseOutput, sourceFolderDAO);
+            parsingUtil.parsePersistenceXml(parsePersistenceXmlParseOutput, sourceFolderDAO);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -194,7 +196,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
 
     private void ParseEjbJarXmlFiles(File parseEjbJarXmlParseOutput, SourceFolderDAO sourceFolderDAO) {
         try {
-            ParsingService.parseEjbJarXml(parseEjbJarXmlParseOutput, sourceFolderDAO);
+            parsingUtil.parseEjbJarXml(parseEjbJarXmlParseOutput, sourceFolderDAO);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -237,7 +239,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
 
     private void ParseFacesConfigXmlFiles(File parseFacesConfigXmlParseOutput, SourceFolderDAO sourceFolderDAO) {
         try {
-            ParsingService.parseFacesConfigXml(parseFacesConfigXmlParseOutput, sourceFolderDAO);
+            parsingUtil.parseFacesConfigXml(parseFacesConfigXmlParseOutput, sourceFolderDAO);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -303,7 +305,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
             throw new RemoteException("User not authenticated");
         }
         SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
-        parsingService.staticParseFiles(sourceFolderDAO);
+        parsingUtil.staticParseFiles(sourceFolderDAO);
     }
 
     @Override
@@ -325,7 +327,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
     }
 
     private void parsePomXmlFile(File pomOutput, SourceFolderDAO sourceFolderDAO) throws IOException {
-        parsingService.parsePomXmlFile(pomOutput,sourceFolderDAO);
+        parsingUtil.parsePomXmlFile(pomOutput,sourceFolderDAO);
 
         PomXmlParseOutputDAO pomXmlParseOutputDAO = parseSourceCodeMapper.getPomXmlParseOutputBySourceFolderId(sourceFolderDAO.getId());
 
@@ -354,7 +356,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
     private void parseJsfFiles(File jsfFilesParseOutput, SourceFolderDAO sourceFolderDAO) throws IOException {
 
         // Assuming ParsingService has a method parsingJsf similar to parsingJsp
-        ParsingService.parsingJsf(jsfFilesParseOutput, sourceFolderDAO);
+        parsingUtil.parsingJsf(jsfFilesParseOutput, sourceFolderDAO);
 
         JsfParseOutPutDAO jsfParseOutputDAO = parseSourceCodeMapper.getJsfParseOutputBySourceFolderId(sourceFolderDAO.getId());
         if (jsfParseOutputDAO == null) {
@@ -377,7 +379,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
 
     private void ParseApplicationXmlFiles(File parseApplicationXmlParseOutput, SourceFolderDAO sourceFolderDAO) {
         try {
-            ParsingService.parseApplicationXml(parseApplicationXmlParseOutput, sourceFolderDAO);
+            parsingUtil.parseApplicationXml(parseApplicationXmlParseOutput, sourceFolderDAO);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -403,7 +405,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
     }
 
     private void WebXmlFiles(File webXmlParseoutput, SourceFolderDAO sourceFolderDAO) throws IOException {
-        ParsingService.parseWebXml(webXmlParseoutput, sourceFolderDAO);
+        parsingUtil.parseWebXml(webXmlParseoutput, sourceFolderDAO);
 
         WebXmlParseOutputDAO webXmlParseOutputDAO = parseSourceCodeMapper.getWebXmlParseOutputBySourceFolderId(sourceFolderDAO.getId());
         if(webXmlParseOutputDAO ==null)
@@ -430,7 +432,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
 
     public void staticParsingJspFiles(File outputLog, File errorLog, SourceFolderDAO sourceFolderDAO) throws IOException {
 
-        ParsingService.parsingJsp(outputLog, errorLog, sourceFolderDAO);
+        parsingUtil.parsingJsp(outputLog, errorLog, sourceFolderDAO);
 
         JspParseOutPutDAO jspParseOutPutDAO = parseSourceCodeMapper.getJspParseOutputBySourceFolderId(sourceFolderDAO.getId());
         if(jspParseOutPutDAO==null)
@@ -470,7 +472,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
     @Transactional
     public void parsing(File output, File errorLog, Integer userId, Integer sourceFolderId, SourceFolderDAO sourceFolderDAO) throws IOException {
 
-        ParsingService.parsing(output, errorLog, sourceFolderDAO);
+        parsingUtil.parsing(output, errorLog, sourceFolderDAO);
         JavaFilesParseDAO javaFilesParseDAO = parseSourceCodeMapper.getOutPutBySourceFolderId(sourceFolderId);
 
         if(javaFilesParseDAO ==null)

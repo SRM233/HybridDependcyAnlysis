@@ -11,19 +11,19 @@ public interface StaticAnalysisService {
 //
 //    HashMap<String, String> ELAnalysis(UserDTO userDTO);
 
-    void AnnotationCount(UserDTO userDTO) throws IOException;
+    Object AnnotationCount(UserDTO userDTO) throws IOException;
 
-    void analyzeWebXml(UserDTO userDTO) throws IOException;
+    Object analyzeWebXml(UserDTO userDTO) throws IOException;
 
-    void FileStoreAnalysis( UserDTO userDTO) throws Exception;
+    Object FileStoreAnalysis( UserDTO userDTO) throws Exception;
 
-    void persistenceAnalysis(UserDTO userDTO) throws IOException;
+    Object persistenceAnalysis(UserDTO userDTO) throws IOException;
 
-    void ejbJarAnalysis(UserDTO userDTO) throws IOException;
+    Object ejbJarAnalysis(UserDTO userDTO) throws IOException;
 
-    void pomXmlAnalysis(UserDTO userDTO) throws IOException;
+    Object pomXmlAnalysis(UserDTO userDTO) throws IOException;
 
-    void facesXmlAnalysis(UserDTO userDTO) throws IOException;
+    Object facesXmlAnalysis(UserDTO userDTO) throws IOException;
 
     void deleteAnnotationAnalysis(Integer userId, Integer sourceFolderId);
 
@@ -39,7 +39,7 @@ public interface StaticAnalysisService {
 
     void deleteFacesConfigAnalysis(Integer userId, Integer sourceFolderId);
 
-    void JspFileCount(UserDTO userDTO) throws IOException;
+    Object JspFileCount(UserDTO userDTO) throws IOException;
     
-    void JsfFileCount(UserDTO userDTO) throws IOException;
+    Object JsfFileCount(UserDTO userDTO) throws IOException;
 }

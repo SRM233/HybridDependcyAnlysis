@@ -13,6 +13,10 @@ import java.util.Map;
 @Data
 @NoArgsConstructor
 public class AnnotationInfo {
-    public String name;
-    public Map<String, String> values = new HashMap<>();
+    private String name;
+    private Map<String, String> values = new HashMap<>();
+
+    public void addValue(String key, String value) {
+        values.put(key, value);
+    }
 }

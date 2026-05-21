@@ -1,12 +1,15 @@
 package com.hybriddependcyanlysis.Service.Impl;
 
-import Common.Result;
 import Common.UserContext.UserContextHolder;
+
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.hybriddependcyanlysis.Mapper.FileMapper;
 import com.hybriddependcyanlysis.Mapper.IngestMapper;
+import com.hybriddependcyanlysis.Mapper.ParseSourceCodeMapper;
 import com.hybriddependcyanlysis.POJO.DAO.SourceFolderDAO;
 import com.hybriddependcyanlysis.POJO.DTO.UserFolderDTO;
-import com.hybriddependcyanlysis.Service.IngestService;
+import com.hybriddependcyanlysis.Service.SourceFolderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,17 +22,21 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 @Service
-public class IngestServiceImpl implements IngestService {
+public class SourceFolderServiceImpl implements SourceFolderService {
 
     @Autowired
     private IngestMapper ingestMapper;
 
     @Autowired
     private FileMapper fileMapper;
+    
+    @Autowired
+    private ParseSourceCodeMapper parseSourceCodeMapper;
 
     @Transactional
     @Override
@@ -72,6 +79,17 @@ public class IngestServiceImpl implements IngestService {
 
     }
 
+    @Override
+    public PageInfo<SourceFolderDAO> getSourceFolders(Integer pageNumber, Integer pageSize) {
+
+        Integer userId = UserContextHolder.getUserId();
+        SourceFolderDAO sourceFolderDAO = new SourceFolderDAO();
+        sourceFolderDAO.setUserId(userId);
+        PageHelper.startPage(pageNumber, pageSize);
+        List<SourceFolderDAO> sourceFolderDAOList = ingestMapper.getSourceFolder(sourceFolderDAO);
+        return new PageInfo<>(sourceFolderDAOList);
+    }
+
     private void unpackZip(File zipFile, Path targetDir, SourceFolderDAO sourceFolderDAO) {
 //        ArrayList<FileDAO> files = new ArrayList<>();
         try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
@@ -112,5 +130,23 @@ public class IngestServiceImpl implements IngestService {
         } catch (IOException e) {
             throw new RuntimeException("Unpack failed", e);
         }
+    }
+
+    @Override
+    public void deleteSourdeFolders(Integer userId, Integer sourceFolderId) {
+        ingestMapper.deleteById(userId, sourceFolderId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteASTFiles(Integer userId, Integer outputId) {
+        parseSourceCodeMapper.deleteASTErrorlog(userId, outputId);
+        parseSourceCodeMapper.deleteASTOutput(userId, outputId);
+    }
+
+    @Override
+    public void deleteJspAstFiles(Integer userId, Integer outputId) {
+        parseSourceCodeMapper.deleteJspAstErrorlog(userId, outputId);
+        parseSourceCodeMapper.deleteJspAstOutput(userId, outputId);
     }
 }

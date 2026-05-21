@@ -7,10 +7,7 @@ import com.hybriddependcyanlysis.POJO.DTO.UserDTO;
 import com.hybriddependcyanlysis.Service.ParseSourceCodeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 
@@ -158,6 +155,63 @@ public class ParseSourceCodeController {
     public Result deleteJsfParseResults(Integer sourceFolderId) {
         log.info("Deleting JSF parse results for source folder id:{}", sourceFolderId);
         parseSourceCodeService.deleteJsfParseResults(sourceFolderId);
+        return Result.success();
+    }
+
+    @PostMapping("/parseAll")
+    public Result parseAll(@RequestParam  Integer sourceFolderId) {
+        log.info("Starting all parsing for source folder id:{}", sourceFolderId);
+        try {
+            parseSourceCodeService.staticParsing(sourceFolderId);
+        } catch (IOException e) {
+            log.error("Failed to parse Java files: {}", e.getMessage(), e);
+        }
+        try {
+            parseSourceCodeService.parseJspFile(sourceFolderId);
+        } catch (IOException e) {
+            log.error("Failed to parse JSP files: {}", e.getMessage(), e);
+        }
+        try {
+            parseSourceCodeService.parseWebXmlFile(sourceFolderId);
+        } catch (IOException e) {
+            log.error("Failed to parse web.xml: {}", e.getMessage(), e);
+        }
+        try {
+            parseSourceCodeService.ParsePersistenceXmlFile(sourceFolderId);
+        } catch (IOException e) {
+            log.error("Failed to parse persistence.xml: {}", e.getMessage(), e);
+        }
+        try {
+            parseSourceCodeService.ParseEjbJarXmlFile(sourceFolderId);
+        } catch (IOException e) {
+            log.error("Failed to parse ejb-jar.xml: {}", e.getMessage(), e);
+        }
+        try {
+            parseSourceCodeService.ParseFacesConfigXmlFile(sourceFolderId);
+        } catch (IOException e) {
+            log.error("Failed to parse faces-config.xml: {}", e.getMessage(), e);
+        }
+        try {
+            parseSourceCodeService.ParseApplicationXmlFile(sourceFolderId);
+        } catch (IOException e) {
+            log.error("Failed to parse application.xml: {}", e.getMessage(), e);
+        }
+        try {
+            parseSourceCodeService.parseJsfFile(sourceFolderId);
+        } catch (IOException e) {
+            log.error("Failed to parse JSF files: {}", e.getMessage(), e);
+        }
+//        try {
+//            parseSourceCodeService.staticParseFile(sourceFolderId);
+//        } catch (IOException e) {
+//            log.error("Failed to static parse files: {}", e.getMessage(), e);
+//        }
+        try {
+            parseSourceCodeService.parsePomXmlFile(sourceFolderId);
+        } catch (IOException e) {
+            log.error("Failed to parse pom.xml: {}", e.getMessage(), e);
+        }
+        log.info("Completed all parsing for source folder id:{}", sourceFolderId);
         return Result.success();
     }
 

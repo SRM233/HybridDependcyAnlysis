@@ -1,37 +1,32 @@
 package com.hybriddependcyanlysis.Mapper;
 
-import com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO;
-import com.hybriddependcyanlysis.POJO.DAO.JavaFilesParseDAO;
-import com.hybriddependcyanlysis.POJO.DAO.JspParseOutPutDAO;
+import com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO;
 import org.apache.ibatis.annotations.Mapper;
-
-import java.util.HashMap;
-import java.util.List;
 
 @Mapper
 public interface StaticAnalysisMapper {
 
-    AnalysisResultDAO getAnnotationCountAnalysisResult(AnalysisResultDAO analysisResultDTO);
+    AnalysisReportDAO getAnnotationCountReport(AnalysisReportDAO analysisResultDTO);
     
-    AnalysisResultDAO getWebXmlAnalysisResult(AnalysisResultDAO analysisResultDTO);
+    AnalysisReportDAO getWebXmlReport(AnalysisReportDAO analysisResultDTO);
     
-    AnalysisResultDAO getFileStoreAnalysisResult(AnalysisResultDAO analysisResultDTO);
+    AnalysisReportDAO getFileStoreReport(AnalysisReportDAO analysisResultDTO);
     
-    AnalysisResultDAO getPersistenceAnalysisResult(AnalysisResultDAO analysisResultDTO);
+    AnalysisReportDAO getPersistenceReport(AnalysisReportDAO analysisResultDTO);
     
-    AnalysisResultDAO getEjbJarAnalysisResult(AnalysisResultDAO analysisResultDTO);
+    AnalysisReportDAO getEjbJarReport(AnalysisReportDAO analysisResultDTO);
     
-    AnalysisResultDAO getPomXmlAnalysisResult(AnalysisResultDAO analysisResultDTO);
+    AnalysisReportDAO getPomXmlReport(AnalysisReportDAO analysisResultDTO);
     
-    AnalysisResultDAO getFacesConfigAnalysisResult(AnalysisResultDAO analysisResultDTO);
+    AnalysisReportDAO getFacesConfigReport(AnalysisReportDAO analysisResultDTO);
 
-    AnalysisResultDAO getJspFileCountAnalysisResult(AnalysisResultDAO analysisResultDTO);
+    AnalysisReportDAO getJspFileCountReport(AnalysisReportDAO analysisResultDTO);
     
-    AnalysisResultDAO getJsfFileCountAnalysisResult(AnalysisResultDAO analysisResultDTO);
+    AnalysisReportDAO getJsfFileCountReport(AnalysisReportDAO analysisResultDTO);
 
-    void insertResult(AnalysisResultDAO analysisResultDAO);
+    void insertResult(AnalysisReportDAO analysisReportDAO);
 
-    void updateResult(AnalysisResultDAO analysisResultDAO);
+    void updateResult(AnalysisReportDAO analysisReportDAO);
 
     void deleteAnnotationAnalysisResult(Integer userId, Integer sourceFolderId);
 

@@ -5,66 +5,66 @@
 <mapper namespace="com.hybriddependcyanlysis.Mapper.StaticAnalysisMapper">
 
 
-    <select id="getDependencyCountGroupByType" resultType="java.util.HashMap">
-        select dependency_type, count(*) AS calledNums from astschema.dependency_table
-        where output_id = #{id} group by dependency_type
-    </select>
-    <select id="getELexpression" resultType="java.util.HashMap">
-        select page_name as pageName, expression from client_side_schema.el_expression_table left join client_side_schema.page_table pt on pt.id = el_expression_table.page_id
+<!--    <select id="getDependencyCountGroupByType" resultType="java.util.HashMap">-->
+<!--        select dependency_type, count(*) AS calledNums from astschema.dependency_table-->
+<!--        where output_id = #{id} group by dependency_type-->
+<!--    </select>-->
+<!--    <select id="getELexpression" resultType="java.util.HashMap">-->
+<!--        select page_name as pageName, expression from client_side_schema.el_expression_table left join client_side_schema.page_table pt on pt.id = el_expression_table.page_id-->
 
-    </select>
+<!--    </select>-->
 
-    <select id="getAnnotationCountAnalysisResult" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO">
-        SELECT * FROM hybridanalysis.analysis_results
+    <select id="getAnnotationCountReport" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO">
+        SELECT * FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'annotation-statistics'
     </select>
     
-    <select id="getWebXmlAnalysisResult" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO">
-        SELECT * FROM hybridanalysis.analysis_results
+    <select id="getWebXmlReport" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO">
+        SELECT * FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'web-xml-analysis'
     </select>
     
-    <select id="getFileStoreAnalysisResult" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO">
-        SELECT * FROM hybridanalysis.analysis_results
+    <select id="getFileStoreReport" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO">
+        SELECT * FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'file-store-analysis'
     </select>
     
-    <select id="getPersistenceAnalysisResult" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO">
-        SELECT * FROM hybridanalysis.analysis_results
+    <select id="getPersistenceReport" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO">
+        SELECT * FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'persistence-analysis'
     </select>
     
-    <select id="getEjbJarAnalysisResult" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO">
-        SELECT * FROM hybridanalysis.analysis_results
+    <select id="getEjbJarReport" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO">
+        SELECT * FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'ejb-jar-analysis'
     </select>
     
-    <select id="getPomXmlAnalysisResult" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO">
-        SELECT * FROM hybridanalysis.analysis_results
+    <select id="getPomXmlReport" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO">
+        SELECT * FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'pom-xml-analysis'
     </select>
     
-    <select id="getFacesConfigAnalysisResult" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO">
-        SELECT * FROM hybridanalysis.analysis_results
+    <select id="getFacesConfigReport" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO">
+        SELECT * FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'faces-config-analysis'
     </select>
 
-    <select id="getJspFileCountAnalysisResult" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO">
-        SELECT * FROM hybridanalysis.analysis_results
+    <select id="getJspFileCountReport" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO">
+        SELECT * FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'jsp-file-count'
     </select>
     
-    <select id="getJsfFileCountAnalysisResult" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisResultDAO">
-        SELECT * FROM hybridanalysis.analysis_results
+    <select id="getJsfFileCountReport" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO">
+        SELECT * FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'jsf-file-count'
     </select>
 
     <insert id="insertResult">
-        insert into hybridanalysis.analysis_results (name, create_time, update_time, user_id, source_folder_id, parse_output_id, path)
+        insert into analysis_report (name, create_time, update_time, user_id, source_folder_id, parse_output_id, path)
         VALUES (#{name}, #{createTime},#{updateTime},#{userId},#{sourceFolderId},#{parseOutputId}, #{path})
     </insert>
     <update id="updateResult">
-        update hybridanalysis.analysis_results
+        update analysis_report
         <set>
             <if test="name != null and name != ''">
                 name = #{name},
@@ -92,37 +92,37 @@
     </update>
 
     <delete id="deleteAnnotationAnalysisResult">
-        DELETE FROM hybridanalysis.analysis_results
+        DELETE FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'annotation-statistics'
     </delete>
 
     <delete id="deleteWebXmlAnalysisResult">
-        DELETE FROM hybridanalysis.analysis_results
+        DELETE FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'web-xml-analysis'
     </delete>
 
     <delete id="deleteFileStoreAnalysisResult">
-        DELETE FROM hybridanalysis.analysis_results
+        DELETE FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'file-store-analysis'
     </delete>
 
     <delete id="deletePersistenceAnalysisResult">
-        DELETE FROM hybridanalysis.analysis_results
+        DELETE FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'persistence-analysis'
     </delete>
 
     <delete id="deleteEjbJarAnalysisResult">
-        DELETE FROM hybridanalysis.analysis_results
+        DELETE FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'ejb-jar-analysis'
     </delete>
 
     <delete id="deletePomXmlAnalysisResult">
-        DELETE FROM hybridanalysis.analysis_results
+        DELETE FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'pom-xml-analysis'
     </delete>
 
     <delete id="deleteFacesConfigAnalysisResult">
-        DELETE FROM hybridanalysis.analysis_results
+        DELETE FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'faces-config-analysis'
     </delete>
 </mapper>

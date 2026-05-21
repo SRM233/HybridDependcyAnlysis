@@ -60,42 +60,7 @@ public class UserController {
         return Result.success("Login success", userLoginDTO);
     }
 
-    //
-    @DeleteMapping("/deleteSourdeFolders")
-    public Result deleteSourdeFolders(Integer sourceFolderId)
-    {
-        Integer userId = UserContextHolder.getUserId();
-        if (userId == null) {
-            return Result.fail("User not authenticated");
-        }
-        log.info("user delete: {}", userId);
-        userService.deleteSourdeFolders(userId, sourceFolderId);
-        return Result.success();
-    }
 
-    @DeleteMapping("/deleteAstFiles")
-    public Result deleteAstFiles(Integer outputId)
-    {
-        Integer userId = UserContextHolder.getUserId();
-        if (userId == null) {
-            return Result.fail("User not authenticated");
-        }
-        log.info("user delete: {}", userId);
-        userService.deleteASTFiles(userId, outputId);
-        return Result.success();
-    }
-
-    @DeleteMapping("/deleteJspAstFiles")
-    public Result deleteJspAstFiles(Integer outputId)
-    {
-        Integer userId = UserContextHolder.getUserId();
-        if (userId == null) {
-            return Result.fail("User not authenticated");
-        }
-        log.info("user delete: {}", userId);
-        userService.deleteJspAstFiles(userId, outputId);
-        return Result.success();
-    }
 
     @GetMapping("/getUser")
     public Result<UserDAO> getUser()

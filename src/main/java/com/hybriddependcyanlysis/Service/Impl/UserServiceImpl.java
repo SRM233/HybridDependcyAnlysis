@@ -3,8 +3,10 @@ package com.hybriddependcyanlysis.Service.Impl;
 import Common.JWT.JwtUtil;
 import Common.Result;
 import Common.UserContext.UserContextHolder;
-import com.hybriddependcyanlysis.Mapper.AnalysisResultMapper;
-import com.hybriddependcyanlysis.Mapper.AstMapper;
+import Common.Util.SecretConstant;
+import cn.hutool.crypto.asymmetric.KeyType;
+import cn.hutool.crypto.asymmetric.RSA;
+import com.hybriddependcyanlysis.Mapper.AnalysisReportMapper;
 import com.hybriddependcyanlysis.Mapper.IngestMapper;
 import com.hybriddependcyanlysis.Mapper.ParseSourceCodeMapper;
 import com.hybriddependcyanlysis.Mapper.StaticAnalysisMapper;
@@ -34,13 +36,12 @@ public class UserServiceImpl implements UserService {
     private ParseSourceCodeMapper parseSourceCodeMapper;
 
     @Autowired
-    private AnalysisResultMapper analysisResultMapper;
+    private AnalysisReportMapper analysisReportMapper;
 
     @Autowired
     private StaticAnalysisMapper staticAnalysisMapper;
 
-    @Autowired
-    private AstMapper astMapper;
+
     @Autowired
     private JwtUtil jwtUtil;
 
@@ -61,7 +62,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserDAO login(String username, String password) {
+
+//        RSA rsa = new RSA(SecretConstant.PRIVATE_KEY, SecretConstant.PUBLIC_KEY);
+//        String decryptUsername = rsa.decryptStr(username, KeyType.PrivateKey);
+//        String decryptPassword = rsa.decryptStr(password, KeyType.PrivateKey);
+
         UserDAO userDAO = userMapper.getUserByName(username);
+
 
 
 
@@ -73,23 +80,7 @@ public class UserServiceImpl implements UserService {
         throw  new RuntimeException("Password is incorrect");
     }
 
-    @Override
-    public void deleteSourdeFolders(Integer userId, Integer sourceFolderId) {
-        ingestMapper.deleteById(userId, sourceFolderId);
-    }
 
-    @Override
-    @Transactional
-    public void deleteASTFiles(Integer userId, Integer outputId) {
-        parseSourceCodeMapper.deleteASTErrorlog(userId, outputId);
-        parseSourceCodeMapper.deleteASTOutput(userId, outputId);
-    }
-
-    @Override
-    public void deleteJspAstFiles(Integer userId, Integer outputId) {
-        parseSourceCodeMapper.deleteJspAstErrorlog(userId, outputId);
-        parseSourceCodeMapper.deleteJspAstOutput(userId, outputId);
-    }
 
     @Override
     public UserDAO getUser(Integer userId) {
@@ -121,6 +112,11 @@ public class UserServiceImpl implements UserService {
         UserContextHolder.clear();
         
         userMapper.deleteUser(userId);
+    }
+
+    @Override
+    public UserDAO getUserByName(String username) {
+        return userMapper.getUserByName(username);
     }
 
 

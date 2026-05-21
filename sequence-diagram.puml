@@ -1,0 +1,97 @@
+@startuml
+title Hybrid Dependencies Analysis - Main Flow
+
+actor User
+
+boundary Auth as "Authentication"
+boundary Project as "Project Manager"
+boundary Parser as "Parse Engine"
+boundary Analyzer as "Analysis Engine"
+boundary Report as "Report Service"
+database DB as "Database"
+collections FS as "File System"
+
+== 1. Register / Login ==
+
+User -> Auth: POST /user/register
+Auth -> DB: save user
+DB --> Auth: OK
+Auth --> User: Result.success()
+
+User -> Auth: GET /user/login
+Auth -> DB: verify user
+DB --> Auth: UserDAO
+Auth --> User: JWT Token
+
+== 2. Upload Project ==
+
+User -> Project: POST /sourceFolder/upload (ZIP)
+Project -> Project: unzip archive
+Project -> DB: save folder info
+DB --> Project: sourceFolderId
+Project --> User: Result.success(sourceFolderId)
+
+== 3. Source Parsing ==
+
+User -> Parser: POST /parse/parseAll?sourceFolderId=1
+Parser -> FS: walk project directory
+
+group Java Parsing
+  Parser -> Parser: Spoon parse .java files
+  Parser -> Parser: extract classes, fields, methods, annotations, imports
+  Parser -> FS: write java-parse-output.json
+  Parser -> DB: save parse record
+end
+
+group JSP Parsing
+  Parser -> Parser: Jasper/Regex parse .jsp files
+  Parser -> FS: write jsp-parse-output.json
+  Parser -> DB: save parse record
+end
+
+group JSF Parsing
+  Parser -> Parser: Jsoup parse .xhtml files
+  Parser -> FS: write jsf-parse-output.json
+  Parser -> DB: save parse record
+end
+
+group XML Parsing
+  Parser -> Parser: parse web.xml / persistence.xml / ejb-jar.xml / faces-config.xml / pom.xml
+  Parser -> FS: write each XML parse output JSON
+  Parser -> DB: save parse records
+end
+
+Parser --> User: Result.success()
+
+== 4. Static Analysis ==
+
+User -> Analyzer: POST /StaticAnalysis/annotationAnalysis
+Analyzer -> FS: read java-parse-output.json
+Analyzer -> Analyzer: count annotation usage
+Analyzer -> Analyzer: generate migration suggestions
+Analyzer -> FS: write annotation-statistics.json
+Analyzer -> DB: save analysis result (insertResult / updateResult)
+DB --> Analyzer: OK
+Analyzer --> User: Result.success(report)
+note right
+  Other analyses:
+  WebXml / FileStore / Persistence
+  / EJB / POM / FacesConfig
+end note
+
+== 5. View Reports ==
+
+User -> Report: GET /reports/AnnotationReport
+Report -> DB: query analysis path (getAnnotationReport)
+DB --> Report: AnalysisReportDAO (includes path)
+Report -> FS: read report JSON file
+FS --> Report: report content
+Report --> User: Result.success(reportData)
+note right
+  Other reports:
+  WebXmlReport / FileStoreReport
+  / PersistenceReport / EjbJarReport
+  / PomXmlReport / FacesConfigReport
+end note
+
+@enduml

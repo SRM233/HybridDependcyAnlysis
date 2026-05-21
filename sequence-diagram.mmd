@@ -1,0 +1,73 @@
+---
+title: Hybrid Dependencies Analysis - Main Flow
+---
+
+sequenceDiagram
+    actor User
+    participant Auth as 认证模块
+    participant Project as 项目管理
+    participant Parser as 解析引擎
+    participant Analyzer as 分析引擎
+    participant Report as 报告服务
+    participant DB as Database
+    participant FS as File System
+
+    Note over User,FS: 1. 注册 / 登录
+    User->>Auth: POST /user/register
+    Auth->>DB: 保存用户
+    DB-->>Auth: OK
+    Auth-->>User: Result.success()
+    User->>Auth: GET /user/login
+    Auth->>DB: 验证用户
+    DB-->>Auth: UserDAO
+    Auth-->>User: JWT Token
+
+    Note over User,FS: 2. 上传项目
+    User->>Project: POST /sourceFolder/upload (ZIP)
+    Project->>Project: 解压 ZIP
+    Project->>DB: 保存文件夹信息
+    DB-->>Project: sourceFolderId
+    Project-->>User: Result.success(sourceFolderId)
+
+    Note over User,FS: 3. 源码解析
+    User->>Parser: POST /parse/parseAll?sourceFolderId=1
+    Parser->>FS: 遍历项目目录
+    par Java 解析
+        Parser->>Parser: Spoon 解析 .java 文件
+        Parser->>Parser: 提取类、字段、方法、注解、import
+        Parser->>FS: 写入 java-parse-output.json
+        Parser->>DB: 保存解析记录
+    and JSP 解析
+        Parser->>Parser: Jasper/正则解析 .jsp 文件
+        Parser->>FS: 写入 jsp-parse-output.json
+        Parser->>DB: 保存解析记录
+    and JSF 解析
+        Parser->>Parser: Jsoup 解析 .xhtml 文件
+        Parser->>FS: 写入 jsf-parse-output.json
+        Parser->>DB: 保存解析记录
+    and XML 解析
+        Parser->>Parser: 解析 web.xml / persistence.xml / ejb-jar.xml / faces-config.xml / pom.xml
+        Parser->>FS: 写入各 XML 解析 JSON
+        Parser->>DB: 保存解析记录
+    end
+    Parser-->>User: Result.success()
+
+    Note over User,FS: 4. 静态分析
+    User->>Analyzer: POST /StaticAnalysis/annotationAnalysis
+    Analyzer->>FS: 读取 java-parse-output.json
+    Analyzer->>Analyzer: 统计注解使用频率
+    Analyzer->>Analyzer: 生成迁移建议
+    Analyzer->>FS: 写入 annotation-statistics.json
+    Analyzer->>DB: 保存分析结果 (insertResult / updateResult)
+    DB-->>Analyzer: OK
+    Analyzer-->>User: Result.success(report)
+    Note over User,FS: 其他分析同理:<br>WebXml/FileStore/Persistence/EJB/POM/FacesConfig
+
+    Note over User,FS: 5. 查看报告
+    User->>Report: GET /reports/AnnotationReport
+    Report->>DB: 查询分析路径 (getAnnotationReport)
+    DB-->>Report: AnalysisReportDAO (含 path)
+    Report->>FS: 读取报告 JSON 文件
+    FS-->>Report: 报告内容
+    Report-->>User: Result.success(reportData)
+    Note over User,FS: 其他报告同理:<br>WebXmlReport/FileStoreReport/PersistenceReport<br>/EjbJarReport/PomXmlReport/FacesConfigReport

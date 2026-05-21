@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hybriddependcyanlysis.Mapper.AnalysisReportMapper">
+
+    <insert id="insertResult">
+        insert into analysis_results (name, create_time, update_time, user_id, source_folder_id, parse_output_id, path)
+        VALUES (#{name}, #{createTime},#{updateTime},#{userId},#{sourceFolderId},#{parseOutputId}, #{path})
+    </insert>
+    <update id="updateResult">
+        update analysis_results
+        <set>
+            <if test="name != null and name != ''">
+                name = #{name},
+            </if>
+            <if test="createTime != null">
+                create_time = #{createTime},
+            </if>
+            <if test="updateTime != null">
+                update_time = #{updateTime},
+            </if>
+            <if test="userId != null">
+                user_id = #{userId},
+            </if>
+            <if test="sourceFolderId != null">
+                source_folder_id = #{sourceFolderId},
+            </if>
+            <if test="parseOutputId != null">
+                parse_output_id = #{parseOutputId},
+            </if>
+            <if test="path != null">
+                path = #{path},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <select id="getAnalysisResultReport" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO">
+        SELECT * FROM analysis_results
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="name != null and name != ''">
+                AND name = #{name}
+            </if>
+            <if test="createTime != null">
+                AND create_time = #{createTime}
+            </if>
+            <if test="updateTime != null">
+                AND update_time = #{updateTime}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="sourceFolderId != null">
+                AND source_folder_id = #{sourceFolderId}
+            </if>
+            <if test="parseOutputId != null">
+                AND parse_output_id = #{parseOutputId}
+            </if>
+            <if test="path != null">
+                And path = #{path}
+            </if>
+        </where>
+    </select>
+</mapper>

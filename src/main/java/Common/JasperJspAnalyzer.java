@@ -1,5 +1,6 @@
 package Common;
 
+import Common.JspFileInfo.JspFileInfo;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
@@ -18,6 +19,7 @@ public class JasperJspAnalyzer {
             Pattern.compile("_jspx_th_([a-zA-Z0-9]+)_");
 
     public static JspFileInfo analyze(Path jspFile) throws Exception {
+        //Use Jasper to compile Jsp file to Java file
         String javaSource = compileJspToJava(jspFile);
         CompilationUnit cu = StaticJavaParser.parse(javaSource);
 

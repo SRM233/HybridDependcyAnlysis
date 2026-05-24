@@ -13,8 +13,8 @@ public class WebConfig implements WebMvcConfigurer{
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
-                .addPathPatterns("/**") // 拦截所有 /api 下的请求
-                .excludePathPatterns("/user/login")// 排除登录接口
+                .addPathPatterns("/**") // Intercept all requests under /api
+                .excludePathPatterns("/user/login")// Exclude login endpoint
                 .excludePathPatterns("/user/register");
 
     }

@@ -7,7 +7,7 @@ public class UserContextHolder {
 // ThreadLocal
 // https://jishuzhan.net/article/2001538049470169089#%E5%AE%9E%E6%88%98%EF%BC%9A%E7%94%A8%E6%88%B7%E4%B8%8A%E4%B8%8B%E6%96%87%E4%BC%A0%E9%80%92
 
-    //定义ThreadLocal实例
+    // Define ThreadLocal instance
     private static final ThreadLocal<UserLoginDTO> USER_THREAD_LOCAL = ThreadLocal.withInitial(() -> null);
 
 

@@ -76,9 +76,9 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
 
     public Path checkOutputFolder(String path) throws IOException {
         Path projectRoot = Paths.get(path).normalize();
-        Path outputRoot = projectRoot.resolve(OutputPath.OUTPUT_BASE_DIR);  // 自动处理分隔符
+        Path outputRoot = projectRoot.resolve(OutputPath.OUTPUT_BASE_DIR);  // Auto-handle separators
 
-        // 检查并创建 output 目录
+        // Check and create output directory
         if (!Files.exists(outputRoot)) {
             try {
                 Files.createDirectories(outputRoot);
@@ -125,7 +125,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
         Path outputRoot = checkOutputFolder(sourceFolderDAO.getDirPath());
 
         Path webXmlResultPath = outputRoot.resolve(OutputPath.WEB_XML_PARSE_RESULT_PATH);
-        // 如果有错误日志： Path errorPath = outputRoot.resolve(OutputPath.WEB_XML_PARSE_ERROR_LOG_PATH);
+        // If error log needed: Path errorPath = outputRoot.resolve(OutputPath.WEB_XML_PARSE_ERROR_LOG_PATH);
 
         File webXmlOutput = webXmlResultPath.toFile();
 
@@ -142,7 +142,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
         SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
         Path outputRoot = checkOutputFolder(sourceFolderDAO.getDirPath());
 
-        Path persistenceResultPath = outputRoot.resolve(OutputPath.PERSISTENCE_PARSE_RESULT_PATH);  // 假设你常量是这个名字
+        Path persistenceResultPath = outputRoot.resolve(OutputPath.PERSISTENCE_PARSE_RESULT_PATH);  // Assuming your constant is this name
 
         File persistenceOutput = persistenceResultPath.toFile();
 
@@ -333,20 +333,20 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
 
         if (pomXmlParseOutputDAO == null) {
             pomXmlParseOutputDAO = new PomXmlParseOutputDAO();
-            pomXmlParseOutputDAO.setPath(pomOutput.getAbsolutePath());           // ← 改用 pomOutput
-            pomXmlParseOutputDAO.setName(OutputFileName.POM_XML_OUTPUT_FILE_NAME);  // ← 建議改用適合POM的檔名常量
+            pomXmlParseOutputDAO.setPath(pomOutput.getAbsolutePath());           // <- Use pomOutput instead
+            pomXmlParseOutputDAO.setName(OutputFileName.POM_XML_OUTPUT_FILE_NAME);  // <- Recommend using suitable POM filename constant
             pomXmlParseOutputDAO.setUserId(sourceFolderDAO.getUserId());
             pomXmlParseOutputDAO.setSourceFolderId(sourceFolderDAO.getId());
             pomXmlParseOutputDAO.setCreateTime(LocalDateTime.now());
             pomXmlParseOutputDAO.setUpdateTime(LocalDateTime.now());
 
-            // 假設你已經新增對應的 insert 方法
+            // Assuming you have already added the corresponding insert method
             parseSourceCodeMapper.insertPomXmlParseOutput(pomXmlParseOutputDAO);
         }
 
         pomXmlParseOutputDAO.setUpdateTime(LocalDateTime.now());
 
-// 假設你已經新增對應的 update 方法
+// Assuming you have already added the corresponding update method
         parseSourceCodeMapper.updatePomXmlParseOutput(pomXmlParseOutputDAO);
 
         System.out.println("POM parse analysis complete. Results in " + pomOutput.getAbsolutePath());

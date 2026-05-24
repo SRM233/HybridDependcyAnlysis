@@ -24,6 +24,9 @@ public interface StaticAnalysisMapper {
     
     AnalysisReportDAO getJsfFileCountReport(AnalysisReportDAO analysisResultDTO);
 
+    AnalysisReportDAO getJspContentReport(AnalysisReportDAO analysisResultDTO);
+    AnalysisReportDAO getJsfContentReport(AnalysisReportDAO analysisResultDTO);
+
     void insertResult(AnalysisReportDAO analysisReportDAO);
 
     void updateResult(AnalysisReportDAO analysisReportDAO);
@@ -41,5 +44,8 @@ public interface StaticAnalysisMapper {
     void deletePomXmlAnalysisResult(Integer userId, Integer sourceFolderId);
 
     void deleteFacesConfigAnalysisResult(Integer userId, Integer sourceFolderId);
+
+    void deleteJspContentAnalysisResult(Integer userId, Integer sourceFolderId);
+    void deleteJsfContentAnalysisResult(Integer userId, Integer sourceFolderId);
 
 }

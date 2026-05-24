@@ -45,7 +45,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
 
 
-    //web xml 检查字段
+    //web xml check fields
 
     //<session-config>
     //<security-constraint></security-constraint> , user-data-constraint，<transport-guarantee>CONFIDENTIAL</transport-guarantee>。
@@ -67,30 +67,31 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             throw new RuntimeException("User not authenticated");
         }
         userDTO.setId(userId);
-        System.out.println("📊 开始统计 JSP 文件数量（基于简化解析）");
+        System.out.println("📊 Starting JSP file count statistics (based on simplified parsing)");
 
-        // 获取 JSP JSON 文件路径
+        // Get JSP parse JSON file path from database
         JspParseOutPutDAO jspDao = parseSourceCodeMapper.getJspParseOutputBySourceFolderId(userDTO.getSourceFolderId());
         if (jspDao == null) {
-            throw new RuntimeException("JSP 解析结果未找到，请先执行解析 source_folder_id=" + userDTO.getSourceFolderId());
+            return noDataReport("JSP");
         }
         String jspOutputPath = jspDao.getPath();
         File jspJsonFile = new File(jspOutputPath);
         checkJsonFile(jspJsonFile);
 
-        // 读取 JSP JSON 文件
+        // Read JSP parse JSON and parse as List<Map>
         ObjectMapper objectMapper = new ObjectMapper();
         String content = Files.readString(jspJsonFile.toPath()).trim();
         if (content.isEmpty() || content.equals("[]") || content.equals("{}")) {
-            throw new RuntimeException("JSP 文件内容为空或空结构: " + jspOutputPath);
+            throw new RuntimeException("JSP file content is empty or null structure: " + jspOutputPath);
         }
 
         List<Map<String, Object>> jspClasses = objectMapper.readValue(jspJsonFile,
                 objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
 
+        // Count JSP file count
         int jspFileCount = jspClasses.size();
 
-        // 生成报告文件
+        // Generate report JSON file
         Path outputRoot = jspJsonFile.toPath().getParent();
         File reportFile = outputRoot.resolve("jsp-file-count-report.json").toFile();
 
@@ -108,7 +109,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, report);
 
-        // 保存分析结果到数据库
+        // Save analysis results to database
         AnalysisReportDAO analysisResultDTO = new AnalysisReportDAO();
         analysisResultDTO.setUserId(userDTO.getId());
         analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
@@ -127,8 +128,8 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             staticAnalysisMapper.updateResult(existingResult);
         }
 
-        System.out.println("✅ JSP 文件统计完成 → " + reportFile.getAbsolutePath());
-        System.out.println("   共发现 " + jspFileCount + " 个 JSP 文件");
+        System.out.println("✅ JSP file count complete -> " + reportFile.getAbsolutePath());
+        System.out.println("   Total found: " + jspFileCount + " JSP files");
         return report;
     }
 
@@ -140,30 +141,31 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             throw new RuntimeException("User not authenticated");
         }
         userDTO.setId(userId);
-        System.out.println("📊 开始统计 JSF 文件数量（基于简化解析）");
+        System.out.println("📊 Starting JSF file count statistics (based on simplified parsing)");
 
-        // 获取 JSF JSON 文件路径
+        // Get JSF parse JSON file path from database
         JsfParseOutPutDAO jsfDao = parseSourceCodeMapper.getJsfParseOutputBySourceFolderId(userDTO.getSourceFolderId());
         if (jsfDao == null) {
-            throw new RuntimeException("JSF 解析结果未找到，请先执行解析 source_folder_id=" + userDTO.getSourceFolderId());
+            return noDataReport("JSF");
         }
         String jsfOutputPath = jsfDao.getPath();
         File jsfJsonFile = new File(jsfOutputPath);
         checkJsonFile(jsfJsonFile);
 
-        // 读取 JSF JSON 文件
+        // Read JSF parse JSON and parse as List<Map>
         ObjectMapper objectMapper = new ObjectMapper();
         String content = Files.readString(jsfJsonFile.toPath()).trim();
         if (content.isEmpty() || content.equals("[]") || content.equals("{}")) {
-            throw new RuntimeException("JSF 文件内容为空或空结构: " + jsfOutputPath);
+            throw new RuntimeException("JSF file content is empty or null structure: " + jsfOutputPath);
         }
 
         List<Map<String, Object>> jsfFiles = objectMapper.readValue(jsfJsonFile,
                 objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
 
+        // Count JSF file count
         int jsfFileCount = jsfFiles.size();
 
-        // 生成报告文件
+        // Generate report JSON file
         Path outputRoot = jsfJsonFile.toPath().getParent();
         File reportFile = outputRoot.resolve("jsf-file-count-report.json").toFile();
 
@@ -193,7 +195,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, report);
 
-        // 保存分析结果到数据库
+        // Save analysis results to database
         AnalysisReportDAO analysisResultDTO = new AnalysisReportDAO();
         analysisResultDTO.setUserId(userDTO.getId());
         analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
@@ -212,8 +214,8 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             staticAnalysisMapper.updateResult(existingResult);
         }
 
-        System.out.println("✅ JSF 文件统计完成 → " + reportFile.getAbsolutePath());
-        System.out.println("   共发现 " + jsfFileCount + " 个 JSF 文件");
+        System.out.println("✅ JSF file count complete -> " + reportFile.getAbsolutePath());
+        System.out.println("   Total found: " + jsfFileCount + " JSF files");
         return report;
     }
 
@@ -235,7 +237,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         ObjectMapper objectMapper = new ObjectMapper();
         JavaFilesParseDAO javaDao = parseSourceCodeMapper.getOutPutBySourceFolderId(userDTO.getSourceFolderId());
         if (javaDao == null) {
-            throw new RuntimeException("Java 解析结果未找到，请先执行解析 source_folder_id=" + userDTO.getSourceFolderId());
+            return noDataReport("Java");
         }
         String outputPath = javaDao.getPath();
 
@@ -243,25 +245,25 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         checkJsonFile(jsonFile);
 
-// 读取前几行或整个内容（小文件可以直接读）
+// Read first few lines or entire content (small files can be read directly)
         String content = Files.readString(jsonFile.toPath()).trim();
 
         if (content.isEmpty() || content.equals("[]") || content.equals("{}")) {
-            throw new RuntimeException("文件内容为空或空结构: " + outputPath);
+            throw new RuntimeException("File content is empty or null structure: " + outputPath);
         }
 
-        // 直接读取为 List<Map<String, Object>>
+        // Read directly as List<Map<String, Object>>
         List<Map<String, Object>> classes = objectMapper.readValue(jsonFile,
                 objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
 
         if(classes.isEmpty())
         {
-            throw new RuntimeException("解析结果文件 is null: " + outputPath);
+            throw new RuntimeException("Parse result file is null: " + outputPath);
         }
 
-//        System.out.println("✅ 成功读取 Java 解析结果！");
-//        System.out.println("总类数量: " + classes.size());
-//        System.out.println("第一个类示例: " + classes.get(0));
+//        System.out.println("✅ Successfully read Java parse results!");
+//        System.out.println("Total class count: " + classes.size());
+//        System.out.println("First class example: " + classes.get(0));
 
 
         Map<String, Integer> countMap = new LinkedHashMap<>();
@@ -274,24 +276,27 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> annos = (List<Map<String, Object>>) cls.getOrDefault("annotations", List.of());
 
+            // Match TARGET_ANNOTATIONS list one by one
             for (Map<String, Object> ann : annos) {
                 String annoName = (String) ann.get("name");
                 if (annoName == null) continue;
 
                 if (DectectedProblems.TARGET_ANNOTATIONS.contains(annoName)) {
+                    // Count by annotation name
                     countMap.merge(annoName, 1, Integer::sum);
+                    // Record which class each annotation belongs to
                     detailMap.computeIfAbsent(annoName, k -> new ArrayList<>()).add(fullName);
                 }
             }
         }
 
-        // ====================== 输出结果 ======================
-//        System.out.println("\n🎉 Annotation 统计完成！共扫描 " + classes.size() + " 个类");
+        // ====================== Output results ======================
+//        System.out.println("\n🎉 Annotation statistics complete! Scanned " + classes.size() + " classes");
 //        countMap.forEach((anno, cnt) -> {
-//            System.out.printf("   %-45s : %d 个%n", anno, cnt);
+//            System.out.printf("   %-45s : %d%n", anno, cnt);
 //        });
 
-        // ====================== 生成报告 JSON ======================
+        // ====================== Generate report JSON ======================
         Path outputRoot = jsonFile.toPath().getParent();
         File reportFile = outputRoot.resolve("annotation-statistics.json").toFile();
 
@@ -332,7 +337,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         return report;
 
-//        System.out.println("\n📁 详细统计报告已保存 → " + reportFile.getAbsolutePath());
+//        System.out.println("\n📁 Detailed statistics report saved -> " + reportFile.getAbsolutePath());
 
     }
 
@@ -340,7 +345,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
     public Object analyzeWebXml(UserDTO userDTO) throws IOException {
         WebXmlParseOutputDAO webXmlDao = parseSourceCodeMapper.getWebXmlParseOutputBySourceFolderId(userDTO.getSourceFolderId());
         if (webXmlDao == null) {
-            throw new RuntimeException("web.xml 解析结果未找到，请先执行解析 source_folder_id=" + userDTO.getSourceFolderId());
+            return noDataReport("web.xml");
         }
         String outputPath = webXmlDao.getPath();
         File webXmlJsonFile = new File(outputPath);
@@ -352,7 +357,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
                 new TypeReference<List<XmlFileInfo>>() {});
 
         if (webDataList.isEmpty()) {
-            System.err.println("⚠️ web.xml JSON 为空: " + outputPath);
+            System.err.println("⚠️ web.xml JSON is empty: " + outputPath);
             return Map.of();
         }
 
@@ -364,25 +369,25 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         Map<String, Object> analysis = new LinkedHashMap<>();
         List<String> migrationSuggestions = new ArrayList<>();
 
-        // ====================== 1. 基础信息（新增） ======================
+        // ====================== 1. Basic info (new) ======================
         analysis.put("fileType", fileInfo.fileType);
         analysis.put("filePath", fileInfo.filePath);
         analysis.put("analyzedAt", LocalDateTime.now().toString());
 
-        // 版本 & metadata-complete（最重要！）
+        // Version check: Servlet 2.x version recommend upgrade
         String version = (String) data.getOrDefault("version", "unknown");
         boolean metadataComplete = Boolean.parseBoolean(String.valueOf(data.get("metadataComplete")));
         analysis.put("webXmlVersion", version);
         analysis.put("metadataComplete", data.get("metadataComplete"));
 
         if (version.compareTo("3.0") < 0 && !version.equals("unknown")) {
-            migrationSuggestions.add("⚠️ web.xml 版本 " + version + "（Servlet 2.x/3.0 前），强烈建议升级到 Jakarta EE 9+（web.xml version=6.0 或使用注解完全取代）");
+            migrationSuggestions.add("⚠️ web.xml version " + version + " (pre-Servlet 2.x/3.0), Strongly recommend upgrading to Jakarta EE 9+ (web.xml version=6.0 or replace entirely with annotations)");
         }
         if (metadataComplete) {
-            migrationSuggestions.add("ℹ️ metadata-complete=true，注解扫描被禁用，建议改为 false 并使用 @WebServlet/@WebFilter/@WebListener");
+            migrationSuggestions.add("ℹ️ metadata-complete=true, annotation scanning is disabled. Recommend setting to false and using @WebServlet/@WebFilter/@WebListener");
         }
 
-        // ====================== 2. TARGET_WEB_XML_SECTIONS 自动统计 ======================
+        // ====================== 2. Config section count statistics ======================
         for (String section : TARGET_WEB_XML_SECTIONS) {
             Object val = data.get(section);
             int count = 0;
@@ -392,9 +397,9 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             analysis.put(section + "Count", count);
         }
 
-        // ====================== 3. 核心配置深度分析 ======================
+        // ====================== 3. Core config deep analysis ======================
 
-        // Context Params（硬编码配置）
+        // Context Params (hardcoded configuration)
         List<Map<String, Object>> contextParams = getList(data, "contextParams");
         analysis.put("contextParams", contextParams);
         if (!contextParams.isEmpty()) {
@@ -403,21 +408,21 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
                     .anyMatch(p -> sensitiveKeys.stream().anyMatch(s ->
                             ((String) p.getOrDefault("name", "")).toLowerCase().contains(s)));
             if (hasSensitive) {
-                migrationSuggestions.add("🚨 发现硬编码 context-param（含数据库/邮件等敏感配置），必须全部外置到 application.yml + Kubernetes ConfigMap/Secret");
+                migrationSuggestions.add("🚨 Hardcoded context-param found (containing sensitive DB/email config). Must be fully externalized to application.yml + Kubernetes ConfigMap/Secret");
             }
         }
 
-        // Servlets（检测框架）
+        // Servlet framework detection: FacesServlet (JSF) / DispatcherServlet (Spring MVC)
         List<Map<String, Object>> servlets = getList(data, "servlets");
         boolean hasFacesServlet = servlets.stream()
                 .anyMatch(s -> ((String) s.getOrDefault("servletClass", "")).contains("FacesServlet"));
         boolean hasSpringDispatcher = servlets.stream()
                 .anyMatch(s -> ((String) s.getOrDefault("servletClass", "")).contains("DispatcherServlet"));
         if (hasFacesServlet) {
-            migrationSuggestions.add("🔄 检测到 FacesServlet（JSF），建议迁移到 Jakarta Faces 或转向 Spring Boot + Thymeleaf/React");
+            migrationSuggestions.add("🔄 FacesServlet (JSF) detected. Recommend migrating to Jakarta Faces or switching to Spring Boot + Thymeleaf/React");
         }
         if (hasSpringDispatcher) {
-            migrationSuggestions.add("🌱 检测到 Spring MVC DispatcherServlet，推荐直接升级到 Spring Boot 3.x（内嵌 Tomcat + 零 XML）");
+            migrationSuggestions.add("🌱 Spring MVC DispatcherServlet detected. Recommend upgrading directly to Spring Boot 3.x (embedded Tomcat + zero XML)");
         }
 
         // Filters / Listeners
@@ -426,66 +431,66 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         analysis.put("filters", filters);
         analysis.put("listeners", listeners);
 
-        // Session Config（已解析为 Map）
+        // Session timeout check: over 30 min requires distributed Session
         @SuppressWarnings("unchecked")
         Map<String, Object> sessionConfig = (Map<String, Object>) data.getOrDefault("sessionConfig", Map.of());
         analysis.put("sessionConfig", sessionConfig);
         String timeout = (String) sessionConfig.getOrDefault("sessionTimeoutMinutes", "30");
         if (Integer.parseInt(timeout) > 30) {
-            migrationSuggestions.add("♻️ session-timeout = " + timeout + " 分钟 → 云上必须使用 Redis / Hazelcast / Spring Session 分布式 Session");
+            migrationSuggestions.add("♻️ session-timeout = " + timeout + " min -> Must use Redis / Hazelcast / Spring Session distributed session in cloud");
         }
 
-        // Login Config（认证方式）
+        // Login auth method check: FORM/BASIC recommend migrating to OAuth2
         @SuppressWarnings("unchecked")
         Map<String, Object> loginConfig = (Map<String, Object>) data.getOrDefault("loginConfig", Map.of());
         String authMethod = (String) loginConfig.getOrDefault("authMethod", "");
         if (!authMethod.isEmpty()) {
-            migrationSuggestions.add("🔐 检测到 " + authMethod + " 认证（FORM/BASIC），建议迁移到 OAuth2 / OpenID Connect + Keycloak / Auth0");
+            migrationSuggestions.add("🔐 detected " + authMethod + " authentication (FORM/BASIC). Recommend migrating to OAuth2 / OpenID Connect + Keycloak / Auth0");
         }
 
-        // Taglib / Welcome Files（老技术）
+        // Taglib / Welcome Files (legacy technology)
         List<Map<String, Object>> taglibs = getList(data, "taglibs");
         List<String> welcomeFiles = getListString(data, "welcomeFiles");
         if (!taglibs.isEmpty()) {
-            migrationSuggestions.add("📚 发现 " + taglibs.size() + " 个 <taglib>，老式 JSP 标签库，建议替换为 JSTL 或完全转向 Facelets/Thymeleaf");
+            migrationSuggestions.add("📚 Found " + taglibs.size() + " <taglib> tags (legacy JSP tag libraries). Recommend replacing with JSTL or migrating fully to Facelets/Thymeleaf");
         }
 
-        // Resource Refs（JNDI）
+        // Resource Refs (JNDI)
         List<Map<String, Object>> resourceRefs = getList(data, "resourceRefs");
         if (!resourceRefs.isEmpty()) {
-            migrationSuggestions.add("☁️ 发现 " + resourceRefs.size() + " 个 <resource-ref>（JNDI），全部改为 @Value + Kubernetes Secret / AWS Secrets Manager");
+            migrationSuggestions.add("☁️ Found " + resourceRefs.size() + " <resource-ref> (JNDI) entries. Replace all with @Value + Kubernetes Secret / AWS Secrets Manager");
             analysis.put("resourceRefDetails", resourceRefs);
         }
 
-        // Security & Error Pages（保留你原来的优秀逻辑）
+        // Security & Error Pages (preserving original logic)
         List<Map<String, Object>> securityConstraints = getList(data, "securityConstraints");
         List<String> securityRoles = getListString(data, "securityRoles");
         List<Map<String, Object>> errorPages = getList(data, "errorPages");
 
         if (!securityConstraints.isEmpty()) {
-            migrationSuggestions.add("🔐 发现 " + securityConstraints.size() + " 个 security-constraint，建议迁移到 Spring Security 6 / Keycloak + Istio");
+            migrationSuggestions.add("🔐 Found " + securityConstraints.size() + " security-constraint entries. Recommend migrating to Spring Security 6 / Keycloak + Istio");
         }
         boolean hasExceptionPages = errorPages.stream().anyMatch(ep -> "exception".equals(ep.get("type")));
         if (hasExceptionPages) {
-            migrationSuggestions.add("📄 自定义 exception-page 建议统一用 @ControllerAdvice + GlobalExceptionHandler");
+            migrationSuggestions.add("📄 Custom exception-page. Recommend using @ControllerAdvice + GlobalExceptionHandler");
         }
 
-        // ====================== 4. 最终汇总 ======================
+        // ====================== 4. Aggregate migration suggestions and calculate score ======================
         analysis.put("migrationSuggestions", migrationSuggestions);
         analysis.put("totalSuggestions", migrationSuggestions.size());
-        analysis.put("modernizationScore", calculateScore(migrationSuggestions.size(), version)); // 升级版评分
+        analysis.put("modernizationScore", calculateScore(migrationSuggestions.size(), version)); // More suggestions = lower score = more modernization needed
 
-        // 保存到数据库（建议）
+        // Save to database (recommended)
         // astMapper.saveWebXmlAnalysis(userDTO.getId(), analysis);
 
-        // ====================== 输出 ======================
-        System.out.println("✅ web.xml 分析完成！文件: " + fileInfo.filePath);
-        System.out.println("   版本: " + version + " | Servlets: " + servlets.size() + " | Filters: " + filters.size());
-        System.out.println("   迁移建议: " + migrationSuggestions.size() + " 条 | 现代化评分: " + analysis.get("modernizationScore") + "/100");
+        // ====================== Output ======================
+        System.out.println("✅ web.xml analysis complete! File: " + fileInfo.filePath);
+        System.out.println("   Version: " + version + " | Servlets: " + servlets.size() + " | Filters: " + filters.size());
+        System.out.println("   Migration suggestions: " + migrationSuggestions.size() + " items | Modernization score: " + analysis.get("modernizationScore") + "/100");
 
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, analysis);
         
-        // 保存分析结果到数据库
+        // Save analysis results to database
         AnalysisReportDAO analysisResultDTO = new AnalysisReportDAO();
         analysisResultDTO.setUserId(userDTO.getId());
         analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
@@ -514,7 +519,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         JavaFilesParseDAO fileStoreJavaDao = parseSourceCodeMapper.getOutPutBySourceFolderId(userDTO.getSourceFolderId());
         if (fileStoreJavaDao == null) {
-            throw new RuntimeException("Java 解析结果未找到，请先执行解析 source_folder_id=" + userDTO.getSourceFolderId());
+            return noDataReport("Java");
         }
         String javaFilesParseOutputPath = fileStoreJavaDao.getPath();
 
@@ -525,64 +530,67 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         String content = Files.readString(javaParseOutputFile.toPath()).trim();
 
         if (content.isEmpty() || content.equals("[]") || content.equals("{}")) {
-            throw new RuntimeException("文件内容为空或空结构: " + javaFilesParseOutputPath);
+            throw new RuntimeException("File content is empty or null structure: " + javaFilesParseOutputPath);
         }
 
-        // 直接读取为 List<Map<String, Object>>
+        // Read directly as List<Map<String, Object>>
         List<Map<String, Object>> classes = objectMapper.readValue(javaParseOutputFile,
                 objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
 
         if(classes.isEmpty())
         {
-            throw new RuntimeException("解析结果文件 is null: " + javaFilesParseOutputPath);
+            throw new RuntimeException("Parse result file is null: " + javaFilesParseOutputPath);
         }
 
+        // Define high-risk file I/O class set
         Set<String> fileRelatedTypes = Set.of(
                 "java.io.File", "java.io.FileWriter", "java.io.FileReader",
                 "java.nio.file.Path", "java.nio.file.Files",
-                "java.io.BufferedWriter", "java.io.OutputStream"  // 示例，添加常见文件操作类
+                "java.io.BufferedWriter", "java.io.OutputStream"  // Example, add common file operation classes
         );
 
 //        Set<String> fileRelatedMethods = Set.of(
 //                "write", "createNewFile", "delete", "mkdir", "exists",
-//                "getAbsolutePath", "listFiles"  // 示例，常见文件方法
+//                "getAbsolutePath", "listFiles"  // Example, common file methods
 //        );
 
-        List<Map<String, Object>> fileRiskClasses = new ArrayList<>();  // 存储有风险的类详情
-        int totalRiskCount = 0;  // 总风险点计数
+        List<Map<String, Object>> fileRiskClasses = new ArrayList<>();  // Store risk class details
+        int totalRiskCount = 0;  // Total risk point count
 
         for (Map<String, Object> cls : classes) {
             String fullName = (String) cls.get("fullName");
             if (fullName == null) continue;
 
             boolean hasFileRisk = false;
-            List<String> riskDetails = new ArrayList<>();  // 这个类的风险点列表
+            List<String> riskDetails = new ArrayList<>();  // Risk point list for this class
 
-            // 检查字段（fields 数组）
+            // Check fields (fields array)
             List<String> imports = (List<String>) cls.getOrDefault("imports", List.of());
 
-//            System.out.println("類別 " + fullName + " 的 imports 有 " + imports.size() + " 個");
+//            System.out.println("Class " + fullName + " has " + imports.size() + " imports");
 
+            // Scan each class imports list
             for(String importClss : imports)
             {
+                // Match file I/O related imports
                 if(fileRelatedTypes.stream().anyMatch(importClss::contains))
                 {
                     hasFileRisk = true;
-                    riskDetails.add("import风险: " + importClss);
+                    riskDetails.add("import risk: " + importClss);
                     totalRiskCount++;
                 }
             }
 
-            // 如果有风险，记录这个类详情
+            // If risk exists, record class details
             if (hasFileRisk) {
                 Map<String, Object> riskCls = new HashMap<>();
-                riskCls.put("className", fullName);  // 风险类名
-                riskCls.put("classType", cls.get("kind"));  // 类类型 (e.g., "Class" or "Interface")
-                riskCls.put("riskDetails", riskDetails);  // 风险详情列表
+                riskCls.put("className", fullName);  // Risk class name
+                riskCls.put("classType", cls.get("kind"));  // Class type (e.g., "Class" or "Interface")
+                riskCls.put("riskDetails", riskDetails);  // Risk detail list
 
-                // 记录 "什么类引用了这个类" (假设你有 dependencyGraph 或 reverseDependencies 地图)
-                // 如果没有 dependencyGraph，你可以先注释这一行，或后续构建一个 reverseGraph
-                // List<String> referencedBy = getReferencedBy(fullName);  // 从 dependencyGraph 反查
+                // Record "what class references this class" (assuming you have dependencyGraph or reverseDependencies map)
+                // If no dependencyGraph, you can comment this line or build a reverseGraph later
+                // List<String> referencedBy = getReferencedBy(fullName);  // Reverse lookup from dependencyGraph
                 // riskCls.put("referencedBy", referencedBy);
 
                 fileRiskClasses.add(riskCls);
@@ -597,22 +605,22 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         report.put("totalRiskCount", totalRiskCount);
         report.put("riskClasses", fileRiskClasses);
 
-        // 生成建议（可选，根据你的需求添加）
+        // Generate suggestions (optional, add based on your needs)
 //        List<String> suggestions = new ArrayList<>();
 //        if (totalRiskCount > 0) {
-//            suggestions.add("⚠️ 检测到 " + totalRiskCount + " 个文件存储相关风险点");
-//            suggestions.add("建议: 迁移到云存储服务（如 AWS S3），避免本地文件操作");
+//            suggestions.add("⚠️ Detected " + totalRiskCount + " file storage related risk point(s)");
+//            suggestions.add("Suggestion: Migrate to cloud storage service (e.g. AWS S3), avoid local file operations");
 //        } else {
-//            suggestions.add("✅ 未检测到文件存储风险");
+//            suggestions.add("✅ No file storage risk detected");
 //        }
 //        report.put("suggestions", suggestions);
 
-        // 写报告
+        // Write report
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, report);
 
-        System.out.println("🎉 文件存储分析完成！报告生成 → " + reportFile.getAbsolutePath());
+        System.out.println("🎉 File store analysis complete! Report generated -> " + reportFile.getAbsolutePath());
 
-        // 保存分析结果到数据库
+        // Save analysis results to database
         AnalysisReportDAO analysisResultDTO = new AnalysisReportDAO();
         analysisResultDTO.setUserId(userDTO.getId());
         analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
@@ -638,7 +646,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
     public Object persistenceAnalysis(UserDTO userDTO) throws IOException {
         PersistenceXmlParseOutputDAO persistenceDao = parseSourceCodeMapper.getPersistenceXmlParseOutputBySourceFolderId(userDTO.getSourceFolderId());
         if (persistenceDao == null) {
-            throw new RuntimeException("persistence.xml 解析结果未找到，请先执行解析 source_folder_id=" + userDTO.getSourceFolderId());
+            return noDataReport("persistence.xml");
         }
         String outputPath = persistenceDao.getPath();
         File persistenceJsonFile = new File(outputPath);
@@ -649,7 +657,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
                 new TypeReference<List<XmlFileInfo>>() {});
 
         if (persistenceDataList.isEmpty()) {
-            System.err.println("⚠️ persistence.xml JSON 为空: " + outputPath);
+            System.err.println("⚠️ persistence.xml JSON is empty: " + outputPath);
             return Map.of();
         }
 
@@ -660,8 +668,8 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         int jndiCount = 0;
         int hardcodedDbCount = 0;
 
-        // 基础信息
-        analysis.put("fileType", persistenceDataList.get(0).fileType);  // 取第一個作為代表
+        // Basic info
+        analysis.put("fileType", persistenceDataList.get(0).fileType);  // Use first as representative
         analysis.put("analyzedAt", LocalDateTime.now().toString());
 
         for (XmlFileInfo fileInfo : persistenceDataList) {
@@ -675,40 +683,40 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
                 @SuppressWarnings("unchecked")
                 Map<String, String> properties = (Map<String, String>) unit.getOrDefault("properties", Map.of());
 
-                // 1. JTA 事務
+                // 1. JTA transaction type check
                 if (transactionType.equals("JTA")) {
-                    migrationSuggestions.add("⚠️ transaction-type=JTA，容器化建議用 Spring @Transactional 或 Jakarta Transactions");
+                    migrationSuggestions.add("⚠️ transaction-type=JTA. For containerization, recommend using Spring @Transactional or Jakarta Transactions");
                 }
 
-                // 2. JNDI 資料源（最重要！）
+                // 2. JNDI data source detection (should be changed to env vars for containers)
                 if (!jtaDataSource.isEmpty()) {
                     jndiCount++;
-                    migrationSuggestions.add("☁️ 發現 JNDI 資料源 (" + jtaDataSource + ")，建議改為環境變數注入 (e.g. SPRING_DATASOURCE_URL)");
+                    migrationSuggestions.add("☁️ Found JNDI data source (" + jtaDataSource + "). Recommend changing to environment variable injection (e.g. SPRING_DATASOURCE_URL)");
                 }
 
-                // 3. 硬編碼資料庫資訊
+                // 3. Hardcoded database info detection
                 boolean hasHardcodedDb = properties.keySet().stream()
                         .anyMatch(k -> k.contains("jdbc.url") || k.contains("username") || k.contains("password"));
                 if (hasHardcodedDb) {
                     hardcodedDbCount++;
-                    migrationSuggestions.add("🚨 properties 中發現硬編碼資料庫 URL / 用戶名 / 密碼，必須全部外部化到 Kubernetes Secret");
+                    migrationSuggestions.add("🚨 Hardcoded database URL / username / password found in properties. Must be fully externalizedto Kubernetes Secret");
                 }
 
-                // 4. schema-generation 自動建表（生產環境危險）
+                // 4. schema-generation auto table creation check (extremely dangerous in production)
                 String schemaAction = (String) properties.getOrDefault("javax.persistence.schema-generation.database.action", "");
                 if (schemaAction.contains("drop-and-create")) {
-                    migrationSuggestions.add("⚠️ schema-generation.database.action = drop-and-create，生產環境極度危險，建議改為 none 或 validate");
+                    migrationSuggestions.add("⚠️ schema-generation.database.action = drop-and-create. Extremely dangerous in production. Recommend changing to none or validate");
                 }
 
-                // 5. provider 版本（可選）
+                // 5. Provider version check
                 String provider = (String) unit.getOrDefault("provider", "unknown");
                 if (provider.contains("hibernate") && provider.compareTo("5.0") < 0) {
-                    migrationSuggestions.add("⚠️ provider = " + provider + "（舊版本 Hibernate），建議升級到 6.x+ 以兼容容器");
+                    migrationSuggestions.add("⚠️ provider = " + provider + "(legacy Hibernate). Recommend upgrading to 6.x+ for container compatibility");
                 }
             }
         }
 
-        // ====================== 最終報告 ======================
+        // ====================== Final report ======================
         analysis.put("totalPersistenceUnits", totalUnits);
         analysis.put("jndiDataSourceCount", jndiCount);
         analysis.put("hardcodedDbConfigCount", hardcodedDbCount);
@@ -720,9 +728,9 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, analysis);
 
-        System.out.println("✅ persistence.xml 分析完成！報告生成 → " + reportFile.getAbsolutePath());
+        System.out.println("✅ persistence.xml analysis complete! Report generated -> " + reportFile.getAbsolutePath());
 
-        // 保存分析结果到数据库
+        // Save analysis results to database
         AnalysisReportDAO analysisResultDTO = new AnalysisReportDAO();
         analysisResultDTO.setUserId(userDTO.getId());
         analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
@@ -746,7 +754,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
     public Object ejbJarAnalysis(UserDTO userDTO) throws IOException {
         EjbJarXmlParseOutputDAO ejbDao = parseSourceCodeMapper.getEjbJarXmlParseOutputBySourceFolderId(userDTO.getSourceFolderId());
         if (ejbDao == null) {
-            throw new RuntimeException("ejb-jar.xml 解析结果未找到，请先执行解析 source_folder_id=" + userDTO.getSourceFolderId());
+            return noDataReport("ejb-jar.xml");
         }
         String outputPath = ejbDao.getPath();
         File ejbJarJsonFile = new File(outputPath);
@@ -757,7 +765,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
                 new TypeReference<List<XmlFileInfo>>() {});
 
         if (ejbDataList.isEmpty()) {
-            System.err.println("⚠️ ejb-jar.xml JSON 为空: " + outputPath);
+            System.err.println("⚠️ ejb-jar.xml JSON is empty: " + outputPath);
             return Map.of();
         }
 
@@ -769,7 +777,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         Map<String, Object> analysis = new LinkedHashMap<>();
         List<String> migrationSuggestions = new ArrayList<>();
 
-        // 基础信息
+        // Basic info
         analysis.put("fileType", fileInfo.fileType);
         analysis.put("filePath", fileInfo.filePath);
         analysis.put("analyzedAt", LocalDateTime.now().toString());
@@ -778,39 +786,44 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         List<Map<String, Object>> beans = getList(data, "sessionBeans");
         analysis.put("beanCount", beans.size());
 
+        // Iterate Session Beans, detect Stateful / JNDI / Bean-managed transactions / security roles
         int statefulCount = 0;
         for (Map<String, Object> bean : beans) {
             String sessionType = (String) bean.getOrDefault("sessionType", "");
 
-            //Checking session beans, find Stateful session annotate and give suggestion
+            // Detect Stateful Session Bean (high containerization risk)
             if (sessionType.equals("Stateful")) {
                 statefulCount++;
-                migrationSuggestions.add("⚠️ 发现 Stateful Session Bean: " + bean.get("ejbName") + "，容器化风险高，建议改为 Stateless + Redis 状态存储");
+                migrationSuggestions.add("⚠️ Found Stateful Session Bean: " + bean.get("ejbName") + ", high containerization risk. Recommend changing to Stateless + Redis state storage");
             }
 
-            //Container compatibility: checking JNDI data source
+            // Container compatibility: check JNDI references
             List<Map<String, Object>> refs = getList(bean, "ejbRef");
             if (!refs.isEmpty()) {
-                migrationSuggestions.add("☁️ 发现 ejb-ref（JNDI），建议改为 @Inject 或 CDI");
+                migrationSuggestions.add("☁️ Found ejb-ref (JNDI). Recommend changing to @Inject or CDI");
             }
+            // Bean-managed transaction check
             String transactionType = (String) bean.getOrDefault("transactionType", "");
             if (transactionType.equals("Bean")) {
-                migrationSuggestions.add("ℹ️ transaction-type=Bean（用户管理事务），建议改为 Container 以利用 Jakarta Transactions");
+                migrationSuggestions.add("ℹ️ transaction-type=Bean (user-managed transactions). Recommend changing to Container to leverage Jakarta Transactions");
             }
+            // Security role check
             List<String> securityRoles = getListString(bean, "securityRoles");
             if (!securityRoles.isEmpty()) {
-                migrationSuggestions.add("🔐 发现 security-role，建议迁移到 Keycloak 或 Spring Security RBAC");
+                migrationSuggestions.add("🔐 Found security-role. Recommend migrating to Keycloak or Spring Security RBAC");
             }
         }
 
+        // MDB (Message Driven Bean) detection
         List<Map<String, Object>> mdbBeans = getList(data, "messageDrivenBeans");
         analysis.put("mdbBeanCount", mdbBeans.size());
 
         for (Map<String, Object> mdb : mdbBeans) {
             String ejbName = (String) mdb.getOrDefault("ejbName", "unknown");
-            migrationSuggestions.add("📨 發現 Message Driven Bean: " + ejbName + "，建議確認 JMS 配置是否遷移到 Kafka 或 Spring JMS");
+            migrationSuggestions.add("📨 Found Message Driven Bean: " + ejbName + ". Recommend verifying JMS config migration to Kafka or Spring JMS");
         }
 
+        // Interceptor detection: recommend migrating to CDI Interceptor
         List<Map<String, Object>> interceptors = getList(data, "interceptors");
         List<Map<String, Object>> bindings = getList(data, "interceptorBindings");
 
@@ -818,24 +831,25 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         analysis.put("interceptorBindings", bindings);
 
         if (interceptors.size() > 0) {
-            migrationSuggestions.add("📌 發現 " + interceptors.size() + " 個 Interceptor，建議遷移到 CDI Interceptor（更適合容器環境，減少 XML 配置）");
+            migrationSuggestions.add("📌 Found " + interceptors.size() + " Interceptor(s). Recommend migrating to CDI Interceptor (better suited for container environments, reduces XML config)");
         }
 
+        // Container transaction attribute check
         List<Map<String, Object>> transactions = getList(data, "containerTransactions");
         analysis.put("transactionCount", transactions.size());
 
         for (Map<String, Object> tx : transactions) {
             String transAttribute = (String) tx.getOrDefault("transAttribute", "unknown");
             if (transAttribute.equals("NotSupported")) {
-                migrationSuggestions.add("⚠️ trans-attribute=NotSupported，可能導致事務不一致，建議確認容器事務管理器");
+                migrationSuggestions.add("⚠️ trans-attribute=NotSupported. May cause transaction inconsistency. Recommend verifying container transaction manager");
             }
         }
 
-        // ejbClientJar (使用你的解析结果中的 "ejbClientJar")
+        // ejbClientJar (using "ejbClientJar" from your parse result)
         String ejbClientJar = (String) data.getOrDefault("ejbClientJar", "");
         analysis.put("ejbClientJar", ejbClientJar);
         if (!ejbClientJar.isEmpty()) {
-            migrationSuggestions.add("ℹ️ 發現 ejb-client-jar = " + ejbClientJar + "，容器化建議移除或改成 Maven 依賴");
+            migrationSuggestions.add("ℹ️ Found ejb-client-jar = " + ejbClientJar + ". For containerization, recommend removing or converting to Maven dependency");
         }
 
         analysis.put("statefulCount", statefulCount);
@@ -844,9 +858,9 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, analysis);
 
-        System.out.println("✅ ejb-jar.xml 分析完成 → " + reportFile.getAbsolutePath());
+        System.out.println("✅ ejb-jar.xml analysis complete -> " + reportFile.getAbsolutePath());
 
-        // 保存分析结果到数据库
+        // Save analysis results to database
         AnalysisReportDAO analysisResultDTO = new AnalysisReportDAO();
         analysisResultDTO.setUserId(userDTO.getId());
         analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
@@ -873,7 +887,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         PomXmlParseOutputDAO pomDao = parseSourceCodeMapper.getPomXmlParseOutputBySourceFolderId(userDTO.getSourceFolderId());
         if (pomDao == null) {
-            throw new RuntimeException("pom.xml 解析结果未找到，请先执行解析 source_folder_id=" + userDTO.getSourceFolderId());
+            return noDataReport("pom.xml");
         }
         String pomParseOutputPath = pomDao.getPath();
 
@@ -887,7 +901,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         List<XmlFileInfo> xmlFileInfoList = objectMapper.readValue(pomXmlFile, new TypeReference<List<XmlFileInfo>>() {});
 
         if (xmlFileInfoList.isEmpty()) {
-            throw new RuntimeException("pomXmlAnalysis 为空");
+            throw new RuntimeException("pomXmlAnalysis is empty");
         }
 
         Map<String, Object> analysis = new LinkedHashMap<>();
@@ -896,7 +910,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         List<String> migrationSuggestions = new ArrayList<>();
 
-        // 全局汇总变量
+        // Global aggregation variables
         List<String> allJavaVersions = new ArrayList<>();
         List<String> allDependencies = new ArrayList<>();
         List<String> allPlugins = new ArrayList<>();
@@ -904,18 +918,18 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         boolean hasLegacyServerDep = false;
         boolean hasLowJavaVersion = false;
 
-        // 遍历所有 pom.xml 文件
+        // Iterate all pom.xml, aggregate Java version, dependencies, plugins, profiles
         for (XmlFileInfo xmlFileInfo : xmlFileInfoList) {
             Map<String, Object> data = xmlFileInfo.data;
 
-            // 收集 javaVersion
+            // Collect javaVersion and check for low version
             String javaVersion = (String) data.getOrDefault("javaVersion", "unknown");
             allJavaVersions.add(javaVersion);
             if (!javaVersion.equals("unknown") && Integer.parseInt(javaVersion) < 11) {
                 hasLowJavaVersion = true;
             }
 
-            // 收集 dependencies 并检查传统服务器依赖
+            // Collect dependencies and check for legacy app server dependencies
             @SuppressWarnings("unchecked")
             List<String> deps = (List<String>) data.getOrDefault("dependencies", List.of());
             allDependencies.addAll(deps);
@@ -923,31 +937,31 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
                 hasLegacyServerDep = true;
             }
 
-            // 收集 plugins
+            // Collect plugins
             @SuppressWarnings("unchecked")
             List<String> plugins = (List<String>) data.getOrDefault("plugins", List.of());
             allPlugins.addAll(plugins);
 
-            // 收集 profileCount
+            // Collect profileCount
             int profileCount = (int) data.getOrDefault("profileCount", 0);
             totalProfileCount += profileCount;
         }
 
-        // 生成迁移建议
+        // Generate migration suggestions: legacy server deps / profile externalization etc.
 //        if (hasLowJavaVersion) {
-//            migrationSuggestions.add("⚠️ 检测到 Java 版本过低（低于 11），建议升级到 Java 17+ 以支持现代容器（如 Liberty/WildFly）");
+//            migrationSuggestions.add("⚠️ Java version too low detected (below 11). Recommend upgrading to Java 17+ to support modern containers (e.g. Liberty/WildFly)");
 //        }
         if (hasLegacyServerDep) {
-            migrationSuggestions.add("⚠️ 检测到传统应用服务器依赖（如 WebLogic/WebSphere），建议移除并迁移到轻量服务器");
+            migrationSuggestions.add("⚠️ Legacy application server dependencies detected (e.g. WebLogic/WebSphere). Recommend removing and migrating to lightweight servers");
         }
         if (totalProfileCount > 0) {
-            migrationSuggestions.add("ℹ️ 检测到 " + totalProfileCount + " 个 profile，建议将多环境配置外部化到 Kubernetes ConfigMap");
+            migrationSuggestions.add("ℹ️ detected " + totalProfileCount + " profile(s). Recommend externalizing multi-environment config to Kubernetes ConfigMap");
         }
 //        if (allDependencies.stream().anyMatch(d -> d.contains("jakarta.jakartaee-api") && d.contains("1.0"))) {
-//            migrationSuggestions.add("⚠️ 检测到旧版 Jakarta EE API 依赖，建议升级到 10.0+ 以兼容容器");
+//            migrationSuggestions.add("⚠️ Legacy Jakarta EE API dependency detected. Recommend upgrading to 10.0+ for container compatibility");
 //        }
 
-        // 汇总到分析报告
+        // Aggregate into analysis report
         analysis.put("allJavaVersions", allJavaVersions);
         analysis.put("allDependencies", allDependencies);
         analysis.put("allPlugins", allPlugins);
@@ -957,9 +971,9 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(analysisReportFile, analysis);
 
-        System.out.println("✅ pom.xml 整合分析完成！报告生成 → " + analysisReportFile.getAbsolutePath());
+        System.out.println("✅ pom.xml integration analysis complete! Report generated -> " + analysisReportFile.getAbsolutePath());
 
-        // 保存分析结果到数据库
+        // Save analysis results to database
         AnalysisReportDAO analysisResultDTO = new AnalysisReportDAO();
         analysisResultDTO.setUserId(userDTO.getId());
         analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
@@ -985,7 +999,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         ObjectMapper objectMapper = new ObjectMapper();
         FacesConfigXmlParseOutputDAO facesDao = parseSourceCodeMapper.getFacesConfigXmlParseOutputBySourceFolderId(userDTO.getSourceFolderId());
         if (facesDao == null) {
-            throw new RuntimeException("faces-config.xml 解析结果未找到，请先执行解析 source_folder_id=" + userDTO.getSourceFolderId());
+            return noDataReport("faces-config.xml");
         }
         String facesXmlParseOutputPath = facesDao.getPath();
 
@@ -998,7 +1012,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
                 new TypeReference<List<XmlFileInfo>>() {});
 
         if (dataList.isEmpty()) {
-            System.err.println("⚠️ faces-config.xml JSON 为空: " + facesXmlParseOutputPath);
+            System.err.println("⚠️ faces-config.xml JSON is empty: " + facesXmlParseOutputPath);
             return Map.of();
         }
 
@@ -1014,12 +1028,14 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
             for (Map<String, Object> bean : managedBeans) {
                 String scope = (String) bean.getOrDefault("scope", "unknown");
+                // session/application scope detection: high containerization risk
                 if (scope.equals("session") || scope.equals("application")) {
                     sessionScopeCount++;
-                    suggestions.add("⚠️ 發現 scope=" + scope + " 的 managed-bean (" + bean.get("name") + ")，容器化風險高，建議改為 request/view scope 或遷移到 CDI (@RequestScoped)");
+                    suggestions.add("⚠️ Found scope=" + scope + " managed-bean (" + bean.get("name") + "), high containerization risk. Recommend changing to request/view scope or migrating to CDI (@RequestScoped)");
                 }
             }
 
+            // Custom PhaseListener detection: tightly coupled to JSF request lifecycle
             List<String> phaseListeners = (List<String>) data.getOrDefault("phaseListeners", List.of());
             for (String pl : phaseListeners) {
                 IssueInfo issue = new IssueInfo();
@@ -1032,6 +1048,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
                 detectedIssues.add(issue);
             }
 
+            // Custom ViewHandler detection: tightly coupled to JSF rendering lifecycle
             List<String> viewHandlers = (List<String>) data.getOrDefault("viewHandlers", List.of());
             for (String vh : viewHandlers) {
                 IssueInfo issue = new IssueInfo();
@@ -1055,9 +1072,9 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, analysis);
 
-        System.out.println("✅ faces-config.xml 分析完成 → " + reportFile.getAbsolutePath());
+        System.out.println("✅ faces-config.xml analysis complete -> " + reportFile.getAbsolutePath());
 
-        // 保存分析结果到数据库
+        // Save analysis results to database
         AnalysisReportDAO analysisResultDTO = new AnalysisReportDAO();
         analysisResultDTO.setUserId(userDTO.getId());
         analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
@@ -1078,43 +1095,306 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         return analysis;
     }
 
+    @Override
+    @Transactional
+    public Object JspContentAnalysis(UserDTO userDTO) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        userDTO.setId(userId);
+        System.out.println("📊 Starting JSP content analysis (EL expressions, Java code blocks, dependencies, etc.)");
 
+        JspParseOutPutDAO jspDao = parseSourceCodeMapper.getJspParseOutputBySourceFolderId(userDTO.getSourceFolderId());
+        if (jspDao == null) {
+            return noDataReport("JSP");
+        }
+        String jspOutputPath = jspDao.getPath();
+        File jspJsonFile = new File(jspOutputPath);
+        checkJsonFile(jspJsonFile);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        String content = Files.readString(jspJsonFile.toPath()).trim();
+        if (content.isEmpty() || content.equals("[]") || content.equals("{}")) {
+            throw new RuntimeException("JSP file content is empty or null structure: " + jspOutputPath);
+        }
+
+        List<Map<String, Object>> jspClasses = objectMapper.readValue(jspJsonFile,
+                objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+
+        int totalJspFiles = jspClasses.size();
+        int totalJavaCodeBlocks = 0;
+        int totalElExpressions = 0;
+        int totalScriptlets = 0;
+        int totalDeclarations = 0;
+        int totalDirectives = 0;
+        int totalCustomTags = 0;
+        List<String> allNamespaces = new ArrayList<>();
+        List<String> allCustomTaglibs = new ArrayList<>();
+
+        // Aggregate JSP file statistics: code blocks / EL / scriptlets / taglibs
+        for (Map<String, Object> jsp : jspClasses) {
+            totalJavaCodeBlocks += ((Number) jsp.getOrDefault("javaCodeBlockCount", 0)).intValue();
+            totalElExpressions += ((List<?>) jsp.getOrDefault("elExpressions", List.of())).size();
+            totalScriptlets += ((List<?>) jsp.getOrDefault("scriptlets", List.of())).size();
+            totalDeclarations += ((List<?>) jsp.getOrDefault("declarations", List.of())).size();
+            totalDirectives += ((List<?>) jsp.getOrDefault("directives", List.of())).size();
+            @SuppressWarnings("unchecked")
+            List<String> namespaces = (List<String>) jsp.getOrDefault("namespaces", List.of());
+            @SuppressWarnings("unchecked")
+            List<String> customTaglibs = (List<String>) jsp.getOrDefault("customTaglibs", List.of());
+            allNamespaces.addAll(namespaces);
+            allCustomTaglibs.addAll(customTaglibs);
+            totalCustomTags += customTaglibs.size();
+        }
+
+        // Deduplicate namespaces and taglibs
+        Set<String> uniqueNamespaces = new LinkedHashSet<>(allNamespaces);
+        Set<String> uniqueCustomTaglibs = new LinkedHashSet<>(allCustomTaglibs);
+
+        // Generate migration suggestions: scriptlet / EL / custom tags / declarations
+        List<String> suggestions = new ArrayList<>();
+        if (totalScriptlets > 0) {
+            suggestions.add("⚠️ Found " + totalScriptlets + " Scriptlet(s) (Java code embedded in JSP). Recommend migrating to Servlet or MVC Controller to avoid business logic in JSP");
+        }
+        if (totalElExpressions > 0) {
+            suggestions.add("ℹ️ Found " + totalElExpressions + " EL expression(s). In cloud environments, ensure Expression Language engine is compatible with Jakarta EL");
+        }
+        if (totalCustomTags > 0) {
+            suggestions.add("📚 Found " + totalCustomTags + " custom taglib reference(s). Recommend evaluating replacement with standard JSTL or migrating to Facelets/Thymeleaf");
+        }
+        if (totalDeclarations > 0) {
+            suggestions.add("⚠️ Found " + totalDeclarations + " JSP Declaration(s) (<%! %>). This is unsafe in multi-threaded environments. Strongly recommend removal");
+        }
+        if (totalJavaCodeBlocks > 10) {
+            suggestions.add("🚨 Too many Java code blocks in JSP (" + totalJavaCodeBlocks + "). Severely violates MVC layering principles. Must be refactored");
+        }
+
+        // Generate report
+        Path outputRoot = jspJsonFile.toPath().getParent();
+        File reportFile = outputRoot.resolve("jsp-content-analysis.json").toFile();
+
+        Map<String, Object> report = new LinkedHashMap<>();
+        report.put("totalJspFiles", totalJspFiles);
+        report.put("totalJavaCodeBlocks", totalJavaCodeBlocks);
+        report.put("totalElExpressions", totalElExpressions);
+        report.put("totalScriptlets", totalScriptlets);
+        report.put("totalDeclarations", totalDeclarations);
+        report.put("totalDirectives", totalDirectives);
+        report.put("totalCustomTaglibs", totalCustomTags);
+        report.put("uniqueNamespaces", uniqueNamespaces);
+        report.put("uniqueCustomTaglibs", uniqueCustomTaglibs);
+        report.put("suggestions", suggestions);
+        report.put("totalSuggestions", suggestions.size());
+        report.put("analysisTime", LocalDateTime.now().toString());
+
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, report);
+
+        // Save to database
+        AnalysisReportDAO analysisResultDTO = new AnalysisReportDAO();
+        analysisResultDTO.setUserId(userDTO.getId());
+        analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
+        analysisResultDTO.setName("jsp-content-analysis");
+        AnalysisReportDAO existingResult = staticAnalysisMapper.getJspContentReport(analysisResultDTO);
+        if (existingResult == null) {
+            analysisResultDTO.setParseOutputId(jspDao.getId());
+            analysisResultDTO.setPath(reportFile.getAbsolutePath());
+            analysisResultDTO.setCreateTime(LocalDateTime.now());
+            analysisResultDTO.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.insertResult(analysisResultDTO);
+        } else {
+            existingResult.setPath(reportFile.getAbsolutePath());
+            existingResult.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.updateResult(existingResult);
+        }
+
+        System.out.println("✅ JSP content analysis complete -> " + reportFile.getAbsolutePath());
+        System.out.println("   Total analyzed: " + totalJspFiles + " JSP files");
+        return report;
+    }
+
+    @Override
+    @Transactional
+    public Object JsfContentAnalysis(UserDTO userDTO) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        userDTO.setId(userId);
+        System.out.println("📊 Starting JSF content analysis (components, EL expressions, bindings, etc.)");
+
+        JsfParseOutPutDAO jsfDao = parseSourceCodeMapper.getJsfParseOutputBySourceFolderId(userDTO.getSourceFolderId());
+        if (jsfDao == null) {
+            return noDataReport("JSF");
+        }
+        String jsfOutputPath = jsfDao.getPath();
+        File jsfJsonFile = new File(jsfOutputPath);
+        checkJsonFile(jsfJsonFile);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        String content = Files.readString(jsfJsonFile.toPath()).trim();
+        if (content.isEmpty() || content.equals("[]") || content.equals("{}")) {
+            throw new RuntimeException("JSF file content is empty or null structure: " + jsfOutputPath);
+        }
+
+        List<Map<String, Object>> jsfFiles = objectMapper.readValue(jsfJsonFile,
+                objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+
+        int totalJsfFiles = jsfFiles.size();
+        int totalComponents = 0;
+        int totalElExpressions = 0;
+        int totalHardcodedPaths = 0;
+        int totalBeans = 0;
+        int transientsViews = 0;
+        int sessionAccessCount = 0;
+        int facesContextAccessCount = 0;
+        int applicationAccessCount = 0;
+        int maxComponentDepth = 0;
+        List<String> allNamespaces = new ArrayList<>();
+        List<String> allBeans = new ArrayList<>();
+        List<String> allHardcodedPaths = new ArrayList<>();
+
+        // Aggregate JSF file statistics: components / EL / hardcoded paths / Beans / Session access
+        for (Map<String, Object> jsf : jsfFiles) {
+            totalComponents += ((Number) jsf.getOrDefault("componentCount", 0)).intValue();
+            totalElExpressions += ((List<?>) jsf.getOrDefault("elExpressions", List.of())).size();
+            totalHardcodedPaths += ((List<?>) jsf.getOrDefault("hardcodedPaths", List.of())).size();
+            totalBeans += ((List<?>) jsf.getOrDefault("beans", List.of())).size();
+            int depth = ((Number) jsf.getOrDefault("maxComponentDepth", 0)).intValue();
+            if (depth > maxComponentDepth) maxComponentDepth = depth;
+            // Page state API access detection
+            if (Boolean.TRUE.equals(jsf.getOrDefault("isTransientView", false))) transientsViews++;
+            if (Boolean.TRUE.equals(jsf.getOrDefault("hasSessionAccess", false))) sessionAccessCount++;
+            if (Boolean.TRUE.equals(jsf.getOrDefault("hasFacesContextAccess", false))) facesContextAccessCount++;
+            if (Boolean.TRUE.equals(jsf.getOrDefault("hasApplicationAccess", false))) applicationAccessCount++;
+
+            @SuppressWarnings("unchecked")
+            List<String> namespaces = (List<String>) jsf.getOrDefault("namespaces", List.of());
+            @SuppressWarnings("unchecked")
+            List<String> beans = (List<String>) jsf.getOrDefault("beans", List.of());
+            @SuppressWarnings("unchecked")
+            List<String> hardcodedPaths = (List<String>) jsf.getOrDefault("hardcodedPaths", List.of());
+            allNamespaces.addAll(namespaces);
+            allBeans.addAll(beans);
+            allHardcodedPaths.addAll(hardcodedPaths);
+        }
+
+        // Deduplicate namespaces and Beans
+        Set<String> uniqueNamespaces = new LinkedHashSet<>(allNamespaces);
+        Set<String> uniqueBeans = new LinkedHashSet<>(allBeans);
+
+        // Generate migration suggestions: components / EL / hardcoded paths / Session / FacesContext
+        List<String> suggestions = new ArrayList<>();
+        if (totalComponents > 0) {
+            suggestions.add("ℹ️ Found " + totalComponents + " JSF component(s). Ensure Jakarta Faces compatibility during migration");
+        }
+        if (totalElExpressions > 0) {
+            suggestions.add("ℹ️ Found " + totalElExpressions + " EL expression(s). Verify EL parser compatibility in cloud environments");
+        }
+        if (totalHardcodedPaths > 0) {
+            suggestions.add("🚨 Found " + totalHardcodedPaths + " hardcoded path(s). Must be externalized to config files or environment variables");
+        }
+        if (sessionAccessCount > 0) {
+            suggestions.add("⚠️ " + sessionAccessCount + " page(s) directly accessing Session. Containerization requires migration to Redis/Hazelcast distributed Session");
+        }
+        if (facesContextAccessCount > 0) {
+            suggestions.add("⚠️ " + facesContextAccessCount + " page(s) directly accessing FacesContext. Thread safety issue. Recommend accessing via CDI Bean");
+        }
+        if (maxComponentDepth > 5) {
+            suggestions.add("📌 Maximum component nesting depth is " + maxComponentDepth + ". May impact rendering performance");
+        }
+
+        // Generate report
+        Path outputRoot = jsfJsonFile.toPath().getParent();
+        File reportFile = outputRoot.resolve("jsf-content-analysis.json").toFile();
+
+        Map<String, Object> report = new LinkedHashMap<>();
+        report.put("totalJsfFiles", totalJsfFiles);
+        report.put("totalComponents", totalComponents);
+        report.put("totalElExpressions", totalElExpressions);
+        report.put("totalHardcodedPaths", totalHardcodedPaths);
+        report.put("totalBeans", totalBeans);
+        report.put("maxComponentDepth", maxComponentDepth);
+        report.put("transientViewCount", transientsViews);
+        report.put("sessionAccessCount", sessionAccessCount);
+        report.put("facesContextAccessCount", facesContextAccessCount);
+        report.put("applicationAccessCount", applicationAccessCount);
+        report.put("uniqueNamespaces", uniqueNamespaces);
+        report.put("uniqueBeans", uniqueBeans);
+        report.put("hardcodedPaths", allHardcodedPaths);
+        report.put("suggestions", suggestions);
+        report.put("totalSuggestions", suggestions.size());
+        report.put("analysisTime", LocalDateTime.now().toString());
+
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(reportFile, report);
+
+        // Save to database
+        AnalysisReportDAO analysisResultDTO = new AnalysisReportDAO();
+        analysisResultDTO.setUserId(userDTO.getId());
+        analysisResultDTO.setSourceFolderId(userDTO.getSourceFolderId());
+        analysisResultDTO.setName("jsf-content-analysis");
+        AnalysisReportDAO existingResult = staticAnalysisMapper.getJsfContentReport(analysisResultDTO);
+        if (existingResult == null) {
+            analysisResultDTO.setParseOutputId(jsfDao.getId());
+            analysisResultDTO.setPath(reportFile.getAbsolutePath());
+            analysisResultDTO.setCreateTime(LocalDateTime.now());
+            analysisResultDTO.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.insertResult(analysisResultDTO);
+        } else {
+            existingResult.setPath(reportFile.getAbsolutePath());
+            existingResult.setUpdateTime(LocalDateTime.now());
+            staticAnalysisMapper.updateResult(existingResult);
+        }
+
+        System.out.println("✅ JSF content analysis complete -> " + reportFile.getAbsolutePath());
+        System.out.println("   Total analyzed: " + totalJsfFiles + " JSF files");
+        return report;
+    }
 
     private void checkJsonFile(File file)
     {
 
         if (!file.exists()) {
-            throw new RuntimeException("文件不存在: " + file.getAbsolutePath());
+            throw new RuntimeException("File does not exist: " + file.getAbsolutePath());
         }
 
         if (file.length() == 0) {
-            throw new RuntimeException("文件为空（0字节）: " + file);
+            throw new RuntimeException("File is empty (0 bytes): " + file);
         }
     }
 
 
-    // 通用获取 List<Map>
+    // Generic helper to get List<Map>
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> getList(Map<String, Object> map, String key) {
         Object val = map.get(key);
         return (val instanceof List) ? (List<Map<String, Object>>) val : List.of();
     }
 
-    // 专用获取 List<String>（securityRoles）
+    // Specific helper to get List<String> (securityRoles)
     @SuppressWarnings("unchecked")
     private List<String> getListString(Map<String, Object> map, String key) {
         Object val = map.get(key);
         return (val instanceof List) ? (List<String>) val : List.of();
     }
 
-    // 简单打分示例（你可以扩展成更复杂的规则）
-    private int calculateScore(int suggestionCount, String version) {
-        return Math.max(100 - suggestionCount * 8, 30); // 建议越多，分数越低，代表越需要现代化
+    private Map<String, Object> noDataReport(String fileType) {
+        Map<String, Object> report = new LinkedHashMap<>();
+        report.put("status", "no_data");
+        report.put("message", "No " + fileType + " files in project, skipping analysis");
+        report.put("suggestions", List.of("No " + fileType + " files detected, no migration suggestions needed"));
+        report.put("totalSuggestions", 0);
+        return report;
     }
 
-    //TODO 整合在一个Common Class 里为静态方法
+    // Simple scoring example (can be extended with more complex rules)
+    private int calculateScore(int suggestionCount, String version) {
+        return Math.max(100 - suggestionCount * 8, 30); // More suggestions = lower score = more modernization needed
+    }
+
+    //TODO Consolidate into a single Common Class as static methods
     private Path checkOutputFile(String path) throws IOException {
-        Path projectRoot = Paths.get(path).normalize();   // 需要 import java.nio.file.Paths;
+        Path projectRoot = Paths.get(path).normalize();   // need import java.nio.file.Paths;
         Path outputRoot = projectRoot.resolve(OutputPath.OUTPUT_BASE_DIR);
 
         if (!Files.exists(outputRoot)) {
@@ -1163,7 +1443,15 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         staticAnalysisMapper.deleteFacesConfigAnalysisResult(userId, sourceFolderId);
     }
 
+    @Override
+    public void deleteJspContentAnalysis(Integer userId, Integer sourceFolderId) {
+        staticAnalysisMapper.deleteJspContentAnalysisResult(userId, sourceFolderId);
+    }
 
+    @Override
+    public void deleteJsfContentAnalysis(Integer userId, Integer sourceFolderId) {
+        staticAnalysisMapper.deleteJsfContentAnalysisResult(userId, sourceFolderId);
+    }
 
 }
 

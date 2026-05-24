@@ -20,7 +20,7 @@ public class ParseSourceCodeController {
     private ParseSourceCodeService parseSourceCodeService;
 
 
-    //用户解析.java源文件请求
+    // User request to parse .java source files
     @PostMapping("/parseJavaFiles")
     public Result parseJavaFiles(Integer sourceFolderId)
     {

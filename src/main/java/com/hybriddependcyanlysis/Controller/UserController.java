@@ -21,14 +21,14 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
 
-    //注入UserService层
+    // Inject UserService layer
     @Autowired
     private UserService userService;
     @Autowired
     private JwtUtil jwtUtil;
 
 
-    //用户注册请求
+    // User registration request
     @PostMapping("/register")
     public Result<UserLoginDTO> register(@RequestBody  UserDTO userDTO) {
         log.info("Registering user:{}", userDTO);
@@ -37,27 +37,23 @@ public class UserController {
         return Result.success();
     }
 
-    //用户登陆请求
+    // User login request
     @GetMapping("/login")
     public Result<UserLoginDTO> login(@RequestParam String username, String password) {
 
-        //接受username和password参数
+        // Accept username and password parameters
 //        log.info("Logining username:{}",userLoginDTO);
-        UserDAO userDAO = userService.login(username, password);
-        //如果没有获取相应的userDAO则返回错误
-
-        if(userDAO == null)
-        {
-            return Result.fail("Invalid username or password");
+        try {
+            UserDAO userDAO = userService.login(username, password);
+            userDAO.setPassword(null);
+            String token = jwtUtil.generateToken(userDAO.getUsername());
+            UserLoginDTO userLoginDTO = new UserLoginDTO();
+            userLoginDTO.setToken(token);
+            userLoginDTO.setUser(userDAO);
+            return Result.success("Login success", userLoginDTO);
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
         }
-        // 清除密码，不返回给前端
-        userDAO.setPassword(null);
-        String token = jwtUtil.generateToken(userDAO.getUsername());
-        UserLoginDTO userLoginDTO = new UserLoginDTO();
-        userLoginDTO.setToken(token);
-        userLoginDTO.setUser(userDAO);
-
-        return Result.success("Login success", userLoginDTO);
     }
 
 
@@ -71,7 +67,7 @@ public class UserController {
         return Result.success(userService.getUser(userId));
     }
 
-    //用户退出请求
+    // User logout request
     @PostMapping("/logout")
     public Result logout()
     {

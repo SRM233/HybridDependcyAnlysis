@@ -13,24 +13,24 @@ public interface AnalysisReportMapper {
 
     void updateResult(AnalysisReportDAO analysisReportDAO);
 
-    @Select("select * from analysis_result where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'annotation-statistics'")
+    @Select("select * from analysis_report where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'annotation-statistics'")
     AnalysisReportDAO getAnnotationReport(AnalysisResultDTO analysisResultDTO);
 
-    @Select("select * from analysis_result where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'web-xml-analysis'")
+    @Select("select * from analysis_report where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'web-xml-analysis'")
     AnalysisReportDAO getWebXmlReport(AnalysisResultDTO analysisResultDTO);
 
-    @Select("select * from analysis_result where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'file-store-analysis'")
+    @Select("select * from analysis_report where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'file-store-analysis'")
     AnalysisReportDAO getFileStoreReport(AnalysisResultDTO analysisResultDTO);
 
-    @Select("select * from analysis_result where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'persistence-analysis'")
+    @Select("select * from analysis_report where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'persistence-analysis'")
     AnalysisReportDAO getPersistenceReport(AnalysisResultDTO analysisResultDTO);
 
-    @Select("select * from analysis_result where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'ejb-jar-analysis'")
+    @Select("select * from analysis_report where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'ejb-jar-analysis'")
     AnalysisReportDAO getEjbJarReport(AnalysisResultDTO analysisResultDTO);
 
-    @Select("select * from analysis_result where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'pom-xml-analysis'")
+    @Select("select * from analysis_report where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'pom-xml-analysis'")
     AnalysisReportDAO getPomXmlReport(AnalysisResultDTO analysisResultDTO);
 
-    @Select("select * from analysis_result where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'faces-config-analysis'")
+    @Select("select * from analysis_report where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'faces-config-analysis'")
     AnalysisReportDAO getFacesConfigReport(AnalysisResultDTO analysisResultDTO);
 }

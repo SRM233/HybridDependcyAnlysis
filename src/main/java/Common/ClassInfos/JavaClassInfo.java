@@ -15,16 +15,16 @@ import java.util.List;
 public class JavaClassInfo {
     private List<String> imports = new ArrayList<>();
     private List<AnnotationInfo> annotations = new ArrayList<>();
-    private String fullName;           // 全限定名 com.haroon.model.Student
+    private String fullName;           // Fully qualified name e.g. com.haroon.model.Student
     private String simpleName;         // Student
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private String packageName;        // com.haroon.model
-    private String kind;               // "Class" 或 "Interface"
+    private String kind;               // "Class" or "Interface"
 //    private String fullSourceCode;
     private List<String> modifiers = new ArrayList<>();
     private List<FieldInfo> fields = new ArrayList<>();
     private List<MethodInfo> methods = new ArrayList<>();
-    private List<IssueInfo> issues = new ArrayList<>();   // 该类触发的所有 Issue
+    private List<IssueInfo> issues = new ArrayList<>();   // All Issues triggered by this class
 
 
     public void addModifier(String modifier) {

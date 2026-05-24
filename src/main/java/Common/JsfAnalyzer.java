@@ -89,7 +89,6 @@ public class JsfAnalyzer {
     }
 
     private static void extractComponentsAndEl(Document doc, JsfFileInfo info) {
-        //todo maybe skip the EL useuse in normal tag
         Set<String> seenTags = new HashSet<>();
         Elements all = doc.getAllElements();
         for (Element el : all) {

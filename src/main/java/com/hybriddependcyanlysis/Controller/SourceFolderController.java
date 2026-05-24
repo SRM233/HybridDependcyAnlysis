@@ -20,7 +20,7 @@ public class SourceFolderController {
     @Autowired
     private SourceFolderService sourceFolderService;
 
-    //用户上传zip档案请求
+    // User upload zip archive request
     @PostMapping("/upload")
     public Result uploadFile(@ModelAttribute UserFolderDTO userFolderDTO)
     {

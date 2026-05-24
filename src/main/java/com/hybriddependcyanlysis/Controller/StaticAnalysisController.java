@@ -44,7 +44,7 @@ public class StaticAnalysisController {
         return Result.success(report);
     }
 
-    //用户注解请求
+    // User annotation analysis request
     @PostMapping("/annotationAnalysis")
     public Result AnnotationAnalysis(@RequestBody UserDTO userDTO)
     {
@@ -204,6 +204,47 @@ public class StaticAnalysisController {
         }
         log.info("Deleting Faces Config analysis for source folder id:{}", sourceFolderId);
         staticAnalysisService.deleteFacesConfigAnalysis(userId, sourceFolderId);
+        return Result.success();
+    }
+
+    @PostMapping("/jspContentAnalysis")
+    public Result JspContentAnalysis(@RequestBody UserDTO userDTO) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        userDTO.setId(userId);
+        log.info("JspContentAnalysis:{}", userDTO);
+        Object report = staticAnalysisService.JspContentAnalysis(userDTO);
+        return Result.success(report);
+    }
+
+    @DeleteMapping("/deleteJspContentAnalysis")
+    public Result deleteJspContentAnalysis(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            return Result.fail("User not authenticated");
+        }
+        log.info("Deleting JSP Content analysis for source folder id:{}", sourceFolderId);
+        staticAnalysisService.deleteJspContentAnalysis(userId, sourceFolderId);
+        return Result.success();
+    }
+
+    @PostMapping("/jsfContentAnalysis")
+    public Result JsfContentAnalysis(@RequestBody UserDTO userDTO) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) return Result.fail("User not authenticated");
+        userDTO.setId(userId);
+        log.info("JsfContentAnalysis:{}", userDTO);
+        return Result.success(staticAnalysisService.JsfContentAnalysis(userDTO));
+    }
+
+    @DeleteMapping("/deleteJsfContentAnalysis")
+    public Result deleteJsfContentAnalysis(Integer sourceFolderId) {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) return Result.fail("User not authenticated");
+        log.info("Deleting JSF Content analysis for source folder id:{}", sourceFolderId);
+        staticAnalysisService.deleteJsfContentAnalysis(userId, sourceFolderId);
         return Result.success();
     }
 

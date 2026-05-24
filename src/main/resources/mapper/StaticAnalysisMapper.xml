@@ -59,6 +59,16 @@
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'jsf-file-count'
     </select>
 
+    <select id="getJspContentReport" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO">
+        SELECT * FROM analysis_report
+        WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'jsp-content-analysis'
+    </select>
+
+    <select id="getJsfContentReport" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO">
+        SELECT * FROM analysis_report
+        WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'jsf-content-analysis'
+    </select>
+
     <insert id="insertResult">
         insert into analysis_report (name, create_time, update_time, user_id, source_folder_id, parse_output_id, path)
         VALUES (#{name}, #{createTime},#{updateTime},#{userId},#{sourceFolderId},#{parseOutputId}, #{path})
@@ -124,5 +134,15 @@
     <delete id="deleteFacesConfigAnalysisResult">
         DELETE FROM analysis_report
         WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'faces-config-analysis'
+    </delete>
+
+    <delete id="deleteJspContentAnalysisResult">
+        DELETE FROM analysis_report
+        WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'jsp-content-analysis'
+    </delete>
+
+    <delete id="deleteJsfContentAnalysisResult">
+        DELETE FROM analysis_report
+        WHERE user_id = #{userId} AND source_folder_id = #{sourceFolderId} AND name = 'jsf-content-analysis'
     </delete>
 </mapper>

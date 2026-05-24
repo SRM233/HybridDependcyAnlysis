@@ -39,7 +39,7 @@ public class JsonFileServiceImpl implements JsonFileService {
     @Override
     public <T> void generateJsonArray(List<T> list, String outputPath) throws IOException {
         if (list == null || list.isEmpty()) {
-            System.out.println("列表為空");
+            System.out.println("List is empty");
             return;
         }
 
@@ -55,7 +55,7 @@ public class JsonFileServiceImpl implements JsonFileService {
         File file = new File(finalPath);
         file.getParentFile().mkdirs();
 
-        // 直接把整個 List 寫成 JSON 陣列
+        // Write entire List directly as JSON array
         mapper.writerWithDefaultPrettyPrinter()
                 .writeValue(file, list);
 

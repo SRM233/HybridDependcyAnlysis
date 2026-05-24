@@ -48,14 +48,14 @@ public class UserServiceImpl implements UserService {
     @Override
     public void register(UserDTO userDTO) {
         UserDAO userDAO = new UserDAO();
-        //使用BeanUtil复制属性给userDAO
+        //Use BeanUtil to copy properties to userDAO
         BeanUtils.copyProperties(userDTO, userDAO);
 
-        //设置创建时间和更新时间为当前
+        //Set creation time and update time to current
         userDAO.setCreateTime(LocalDateTime.now());
         userDAO.setUpdateTime(LocalDateTime.now());
 
-        //插入userDAO到user table
+        //Insert userDAO into user table
         userMapper.insertUser(userDAO);
 
     }
@@ -68,16 +68,13 @@ public class UserServiceImpl implements UserService {
 //        String decryptPassword = rsa.decryptStr(password, KeyType.PrivateKey);
 
         UserDAO userDAO = userMapper.getUserByName(username);
-
-
-
-
-        if(userDAO.getPassword().equals(password))
-        {
-            return userDAO;
+        if (userDAO == null) {
+            throw new RuntimeException("User not found");
         }
-
-        throw  new RuntimeException("Password is incorrect");
+        if (userDAO.getPassword() == null || !userDAO.getPassword().equals(password)) {
+            throw new RuntimeException("Password is incorrect");
+        }
+        return userDAO;
     }
 
 
@@ -97,7 +94,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void logout() {
 
-        //释放Thread内存
+        //Release Thread memory
         UserContextHolder.clear();
     }
 

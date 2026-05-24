@@ -6,7 +6,7 @@ import Common.JsfAnalyzer;
 import Common.JsfFileInfo.JsfFileInfo;
 import Common.JsfMigrationIssueDetector;
 import Common.JspContentAnalyzer;
-import Common.JspFileInfo;
+import Common.JspFileInfo.JspFileInfo;
 import Common.OutputPath;
 import Common.XmlFileInfo.XmlFileInfo;
 import com.hybriddependcyanlysis.POJO.AnalysisResultReport;
@@ -31,9 +31,9 @@ import spoon.reflect.visitor.filter.TypeFilter;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -60,6 +60,8 @@ public class ParsingUtil {
     public void parsing(File serverOutput, File serverError, SourceFolderDAO sourceFolderDAO) throws IOException {
         javaClasses.clear();
 
+        List<String> errorLines = new ArrayList<>();
+
         Path root = Paths.get(sourceFolderDAO.getDirPath());
         if (!Files.exists(root) || !Files.isDirectory(root)) return;
         try (Stream<Path> stream = Files.walk(root)) {
@@ -69,26 +71,31 @@ public class ParsingUtil {
                         try {
                             parseJavaFile(p.toFile());
                          } catch (Exception e) {
-                             System.err.println("解析Java文件失败: " + p + " - " + e.getMessage());
+                             String err = "Failed to parse Java file: " + p + " - " + e.getMessage();
+                             System.err.println(err);
+                             errorLines.add(err);
                          }
                     });
         }
 
-        Path outputRoot = root.resolve(OutputPath.OUTPUT_BASE_DIR);
-        File jsonFile = outputRoot.resolve(OutputPath.JAVA_PARSE_RESULT_PATH).toFile();
-        jsonFileService.generateJsonArray(javaClasses, jsonFile.getAbsolutePath());
+        jsonFileService.generateJsonArray(javaClasses, serverOutput.getAbsolutePath());
+
+        if (!errorLines.isEmpty()) {
+            Files.write(serverError.toPath(), errorLines, StandardCharsets.UTF_8);
+        }
     }
 
     public void parsingJsp(File outputLog, File errorLog, SourceFolderDAO sourceFolderDAO) throws IOException {
         Path root = Paths.get(sourceFolderDAO.getDirPath());
         if (!Files.exists(root) || !Files.isDirectory(root)) {
-            System.out.println("项目目录不存在，跳过 JSP 解析");
+            System.out.println("Project directory does not exist, skipping JSP parsing");
             return;
         }
 
         Set<String> processed = new HashSet<>();
+        List<String> errorLines = new ArrayList<>();
 
-        System.out.println("=== 开始扫描 JSP 文件 ===");
+        System.out.println("=== Start scanning JSP files ===");
 
         try (Stream<Path> stream = Files.walk(root)) {
             stream.filter(Files::isRegularFile)
@@ -107,33 +114,40 @@ public class ParsingUtil {
                             long size = Files.size(p);
                             String uniqueKey = absPath + "|" + size;
                             if (processed.add(uniqueKey)) {
-                                System.out.println("   → 开始解析: " + p.getFileName());
+                                System.out.println("   -> Starting parse: " + p.getFileName());
                                 parseJspFiles(p.toFile());
                             }
-                        } catch (IOException ignored) {}
+                        } catch (IOException e) {
+                            errorLines.add("JSP file access error: " + p + " - " + e.getMessage());
+                        }
                     });
         }
 
-        System.out.println("=== JSP 扫描结束 ===\n");
+        System.out.println("=== JSP scan complete ===\n");
 
-        Path outputRoot = root.resolve(OutputPath.OUTPUT_BASE_DIR);
-        File jspJsonFile = outputRoot.resolve(OutputPath.JSP_PARSE_RESULT_PATH).toFile();
+        jsonFileService.generateJsonArray(jspInfos, outputLog.getAbsolutePath());
 
-        jsonFileService.generateJsonArray(jspInfos, jspJsonFile.getAbsolutePath());
+        System.out.println("JSP JSON report generated -> " + outputLog.getAbsolutePath());
+        System.out.println("   Total: " + jspInfos.size() + " JSP files");
 
-        System.out.println("JSP JSON 报告生成完成 → " + jspJsonFile.getAbsolutePath());
-        System.out.println("   共包含 " + jspInfos.size() + " 个 JSP 文件");
+        if (!errorLines.isEmpty()) {
+            Files.write(errorLog.toPath(), errorLines, StandardCharsets.UTF_8);
+        }
     }
 
     public void parseJavaFile(File javaFile) throws IOException {
         try {
+            //Using Spoon to parse java files Reference link: https://spoon.gforge.inria.fr/launcher.html
+            //Building the Spoon Model
             Launcher launcher = new Launcher();
+            //Set noClasspath true for avoid error when parsing class missing dependency or incompleted code
             launcher.getEnvironment().setNoClasspath(true);
             launcher.addInputResource(javaFile.getAbsolutePath());
             launcher.buildModel();
 
             CtModel model = launcher.getModel();
 
+            // Extract all types including class, inteface and enum
             for (CtType<?> type : model.getAllTypes()) {
                 JavaClassInfo javaClassInfo = new JavaClassInfo();
                 parseClass(type, javaClassInfo);
@@ -150,17 +164,20 @@ public class ParsingUtil {
 
         Set<String> classDeps = new HashSet<>();
 
+        //Extract information fully qualified name, simple name, package name, and type.
         javaClassInfo.setFullName(type.getQualifiedName());
         javaClassInfo.setSimpleName(type.getSimpleName());
         javaClassInfo.setPackageName(type.getPackage() != null ? type.getPackage().getQualifiedName() : "(default)");
         javaClassInfo.setKind((type instanceof CtInterface) ? "Interface" : "Class");
 
+        //Extract modifiers
         List<String> modifiers = type.getModifiers().stream()
                 .map(ModifierKind::toString)
                 .map(String::toLowerCase)
                 .collect(Collectors.toList());
         javaClassInfo.setModifiers(modifiers.isEmpty() ? null : modifiers);
 
+        //Extract annotations
         List<AnnotationInfo> annotations = new ArrayList<>();
         for (CtAnnotation<?> annotation : type.getAnnotations()) {
             AnnotationInfo annInfo = new AnnotationInfo();
@@ -170,57 +187,68 @@ public class ParsingUtil {
         }
         javaClassInfo.setAnnotations(annotations.isEmpty() ? null : annotations);
 
+        //Extract fields
         List<FieldInfo> fields = new ArrayList<>();
         for (CtField<?> field : type.getFields()) {
             FieldInfo f = new FieldInfo();
+            //Extract field name like : username
             f.name = field.getSimpleName();
+            //Extract the type of field like : String
             f.type = field.getType() != null ? field.getType().getQualifiedName() : "(unresolved)";
+            //Extract the modifiers
             f.modifiers = field.getModifiers().stream()
                     .map(ModifierKind::toString)
                     .map(String::toLowerCase)
                     .collect(Collectors.toList());
 
+            //Extract annotations of field
             List<AnnotationInfo> fieldAnnotations = new ArrayList<>();
             for (CtAnnotation<?> ann : field.getAnnotations()) {
                 AnnotationInfo annInfo = new AnnotationInfo();
+                //Extract annotation name
                 annInfo.setName(ann.getAnnotationType().getQualifiedName());
                 fieldAnnotations.add(annInfo);
             }
+            //Set the annotation to the field
             f.annotations = fieldAnnotations.isEmpty() ? null : fieldAnnotations;
             fields.add(f);
         }
+        //Set the
         javaClassInfo.setFields(fields.isEmpty() ? null : fields);
 
+        //Parse each method and collect dependencies
         for (CtMethod<?> method : type.getMethods()) {
             try {
                 parseMethodWithDeps(method, javaClassInfo, classDeps);
             } catch (IOException e) {
-                System.err.println("解析方法失败: " + method.getSimpleName() + " - " + e.getMessage());
+                System.err.println("Parsing method failed: " + method.getSimpleName() + " - " + e.getMessage());
             }
         }
         if (javaClassInfo.getMethods() != null && javaClassInfo.getMethods().isEmpty()) {
             javaClassInfo.setMethods(null);
         }
 
+        // Run three problem checks: constructor call, memory copy, and call chain.
         detectConstructorIssues(type, classDeps);
         detectMemoryReplicationIssues(type, classDeps);
+
 
         List<String> importList = new ArrayList<>();
         try {
             CtCompilationUnit cu = type.getPosition().getCompilationUnit();
             if (cu == null) {
-                System.out.println("无法通过position获取编译单元，尝试工厂方法: " + type.getQualifiedName());
+                System.out.println("Unable to obtain the compilation unit by position, try the factory method: " + type.getQualifiedName());
                 cu = type.getFactory().CompilationUnit().getOrCreate(type);
             }
 
             if (cu != null) {
-                System.out.println("找到编译单元，提取imports: " + type.getQualifiedName());
+                System.out.println("Locate the compilation unit and extract the imports: " + type.getQualifiedName());
                 List<CtImport> imports = cu.getImports();
-                System.out.println("  找到 " + imports.size() + " 个import语句");
+                System.out.println("  Found " + imports.size() + " imports");
 
                 for (int i = 0; i < imports.size(); i++) {
                     CtImport imp = imports.get(i);
-                    System.out.println("  处理第 " + (i+1) + " 个import: " + imp.toString());
+                    System.out.println("  process " + (i+1) + " import: " + imp.toString());
 
                     CtReference ref = imp.getReference();
                     if (ref != null) {
@@ -235,12 +263,12 @@ public class ParsingUtil {
                                 qualifiedName = ((CtExecutableReference<?>) ref).getSignature();
                             }
                         } catch (Exception e) {
-                            System.out.println("  获取完整限定名失败: " + e.getMessage());
+                            System.out.println("  Failed to retrieve full qualified name: " + e.getMessage());
                         }
 
                         importList.add(qualifiedName != null ? qualifiedName : importName);
-                        System.out.println("  → 导入[" + (i+1) + "]: " + importName +
-                                         (qualifiedName != null ? " (完整: " + qualifiedName + ")" : ""));
+//                        System.out.println("  → import[" + (i+1) + "]: " + importName +
+//                                         (qualifiedName != null ? " (full: " + qualifiedName + ")" : ""));
                     } else {
                         String importString = imp.toString();
                         if (importString.startsWith("import ")) {
@@ -249,18 +277,18 @@ public class ParsingUtil {
                                 importContent = importContent.substring(0, importContent.length() - 1);
                             }
                             importList.add(importContent);
-                            System.out.println("  → 无法解析的导入[" + (i+1) + "]，使用字符串: " + importContent);
+//                            System.out.println("  → Unresolved import[" + (i+1) + "], using string: " + importContent);
                         } else {
                             importList.add("(unresolved import: " + importString + ")");
-                            System.out.println("  → 无法解析的导入[" + (i+1) + "]: " + importString);
+//                            System.out.println("  → Unresolved import[" + (i+1) + "]: " + importString);
                         }
                     }
                 }
             } else {
-                System.err.println("无法获取编译单元: " + type.getQualifiedName());
+                System.err.println("Unable to obtain compilation unit: " + type.getQualifiedName());
             }
         } catch (Exception e) {
-            System.err.println("提取 imports 失败: " + type.getQualifiedName() + " - " + e.getMessage());
+            System.err.println("Failed to extract imports: " + type.getQualifiedName() + " - " + e.getMessage());
             e.printStackTrace();
         }
 
@@ -270,9 +298,6 @@ public class ParsingUtil {
         javaClasses.add(javaClassInfo);
     }
 
-    public void parseClass(CtType<?> type) throws IOException {
-        parseClass(type, new JavaClassInfo());
-    }
 
     private void parseMethodWithDeps(CtMethod<?> method, JavaClassInfo classInfo, Set<String> classDeps) throws IOException {
         MethodInfo m = new MethodInfo();
@@ -283,6 +308,7 @@ public class ParsingUtil {
                 .map(String::toLowerCase)
                 .collect(Collectors.toList());
 
+        //Extract parameters of method
         for (CtParameter<?> param : method.getParameters()) {
             ParameterInfo p = new ParameterInfo();
             p.name = param.getSimpleName();
@@ -296,14 +322,8 @@ public class ParsingUtil {
 
         classInfo.addMethod(m);
 
+        //Detect invocation issues in a method
         detectInvocationIssues(method, classDeps);
-    }
-
-    public void parseMethod(CtMethod<?> method, JavaClassInfo classInfo) throws IOException {
-        parseMethodWithDeps(method, classInfo, new HashSet<>());
-    }
-
-    public void parsePackage(CtModel model, BufferedWriter writer) throws IOException {
     }
 
     public void detectInvocationIssues(CtMethod<?> method, Set<String> classDeps) throws IOException {
@@ -311,12 +331,17 @@ public class ParsingUtil {
 
         boolean isGeneratedJsp = className.contains("_jsp") || className.contains("org.apache.jsp");
 
+        //Traversing the invocation in a method
         method.filterChildren(new TypeFilter<>(CtInvocation.class)).forEach(inv -> {
             try {
+                //Extract the invocation
                 CtInvocation<?> call = (CtInvocation<?>) inv;
+                //Get the invocation method
                 CtExecutableReference<?> exec = call.getExecutable();
+                //Get the invocation belong to which class
                 CtTypeReference<?> declaringType = exec.getDeclaringType();
 
+                //Set the invocation class name if null then set the unknown which maybe the user custom
                 String declaringTypeName = (declaringType != null) ? declaringType.getQualifiedName() : "(unknown)";
                 String signature = exec.getSignature();
                 String methodName = exec.getSimpleName();
@@ -371,15 +396,17 @@ public class ParsingUtil {
                 }
 
             } catch (Exception e) {
-                System.err.println("检测调用问题时出错: " + e.getMessage());
+                System.err.println("Error detecting invocation issues: " + e.getMessage());
             }
         });
     }
 
     public void detectConstructorIssues(CtType<?> type, Set<String> classDeps) throws IOException {
+        //Traversing the constructor call in a class like: new File(...)
         type.filterChildren(new TypeFilter<>(CtConstructorCall.class)).forEach(ctor -> {
             try {
                 CtConstructorCall<?> call = (CtConstructorCall<?>) ctor;
+                //Extract the class
                 CtTypeReference<?> ref = call.getType();
                 String typeName = (ref != null) ? ref.getQualifiedName() : "(unknown)";
                 int line = call.getPosition() != null ? call.getPosition().getLine() : 0;
@@ -454,7 +481,7 @@ public class ParsingUtil {
                         break;
                 }
             } catch (Exception e) {
-                System.err.println("检测构造器问题时出错: " + e.getMessage());
+                System.err.println("Error detecting constructor problem: " + e.getMessage());
             }
         });
     }
@@ -463,6 +490,7 @@ public class ParsingUtil {
         String className = type.getQualifiedName();
         String classLoc = className;
 
+        //Extract implements interface
         for (CtTypeReference<?> interfaceRef : type.getSuperInterfaces()) {
             String interfaceName = interfaceRef.getQualifiedName();
             if (interfaceName.equals("java.io.Serializable")) {
@@ -570,38 +598,47 @@ public class ParsingUtil {
         }
     }
 
-    public void writeModifiers(Set<ModifierKind> modifiers, BufferedWriter writer, String indent, String context) throws IOException {
-        if (modifiers != null && !modifiers.isEmpty()) {
-            String modifierStr = modifiers.stream()
-                    .map(ModifierKind::toString)
-                    .map(String::toLowerCase)
-                    .reduce((a, b) -> a + " " + b)
-                    .orElse("");
-            writer.write(indent + context + " Modifier: " + modifierStr + "\n");
-        }
-    }
 
     public void parseJspFiles(File jspFile) {
         JspFileInfo jspAnalysisResult;
         boolean usingJasper = false;
 
         try {
-            System.out.println("📝 [Jasper] 分析 JSP 文件: " + jspFile.getName());
+            // Track 1: Jasper compile JSP -> extract dependency info (imports, namespaces, customTaglibs, server refs)
+            System.out.println("📝 [Jasper] Analyzing JSP file: " + jspFile.getName());
             jspAnalysisResult = JasperJspAnalyzer.analyze(jspFile.toPath());
             usingJasper = true;
 
-            System.out.println("✅ [Jasper] 分析成功: " + jspFile.getName());
-            System.out.println("   引入的命名空间: " + jspAnalysisResult.namespaces.size());
-            System.out.println("   Java代码块: " + jspAnalysisResult.getJavaCodeBlockCount());
-            System.out.println("   自定义标签: " + jspAnalysisResult.getCustomTaglibs().size());
+            System.out.println("✅ [Jasper] Analysis successful: " + jspFile.getName());
+            System.out.println("   Imported namespaces: " + jspAnalysisResult.namespaces.size());
+            System.out.println("   Java code blocks: " + jspAnalysisResult.getJavaCodeBlockCount());
+            System.out.println("   Custom tags: " + jspAnalysisResult.getCustomTaglibs().size());
+
+            // When Jasper succeeds, additionally analyze original JSP source with regex to correct content fields
+            // scriptlets/declarations/elExpressions in Jasper output are generated Java code, not original JSP content
+            try {
+                JspFileInfo regexResult = JspContentAnalyzer.analyzeJspContent(jspFile);
+                jspAnalysisResult.setElExpressions(regexResult.getElExpressions());
+                jspAnalysisResult.setScriptlets(regexResult.getScriptlets());
+                jspAnalysisResult.setDeclarations(regexResult.getDeclarations());
+                jspAnalysisResult.setExpressions(regexResult.getExpressions());
+                jspAnalysisResult.setDirectives(regexResult.getDirectives());
+                jspAnalysisResult.setBeans(regexResult.getBeans());
+                jspAnalysisResult.setIncludes(regexResult.getIncludes());
+                jspAnalysisResult.setJavaCodeBlockCount(regexResult.getJavaCodeBlockCount());
+                jspAnalysisResult.setJavaCodeLineCount(regexResult.getJavaCodeLineCount());
+            } catch (Exception e) {
+                System.out.println("   ⚠️ Regex supplementary analysis failed, using Jasper result: " + e.getMessage());
+            }
 
         } catch (Exception e) {
-            System.out.println("⚠️ [Jasper] 分析失败，回退到正则方案: " + jspFile.getName() + " → " + e.getMessage());
+            // Track 2: Jasper failed, fallback to pure regex analysis
+            System.out.println("⚠️ [Jasper] Analysis failed, falling back to regex: " + jspFile.getName() + " → " + e.getMessage());
 
             try {
                 jspAnalysisResult = JspContentAnalyzer.analyzeJspContent(jspFile);
             } catch (Exception ex) {
-                System.out.println("❌ 正则回退也失败: " + ex.getMessage());
+                System.out.println("❌ Regex fallback also failed: " + ex.getMessage());
                 return;
             }
         }
@@ -610,7 +647,7 @@ public class ParsingUtil {
 
         IssueInfo warning = new IssueInfo();
         warning.setSeverity("Medium");
-        warning.setMessage("使用 JSP 文件可能导致扩展性问题，建议使用现代前端技术");
+        warning.setMessage("Using JSP files may cause scalability issues, recommend using modern frontend technologies");
         warning.setLocation(jspFile.getAbsolutePath());
         warning.setClassName(jspFile.getName());
         warning.setSource("jsp");
@@ -619,12 +656,12 @@ public class ParsingUtil {
         allIssues.add(warning);
 
         String tag = usingJasper ? "Jasper" : "Regex";
-        System.out.println("✅ [" + tag + "] JSP 内容分析完成: " + jspFile.getName());
-        System.out.println("   代码块数量: " + jspAnalysisResult.getJavaCodeBlockCount());
-        System.out.println("   代码行数: " + jspAnalysisResult.getJavaCodeLineCount());
-        System.out.println("   自定义标签: " + jspAnalysisResult.getCustomTaglibs().size());
-        System.out.println("   服务器引用: " + jspAnalysisResult.getServerSpecificReferences().size());
-        System.out.println("   EL表达式: " + jspAnalysisResult.getElExpressions().size());
+        System.out.println("✅ [" + tag + "] JSP content analysis complete: " + jspFile.getName());
+        System.out.println("   Code block count: " + jspAnalysisResult.getJavaCodeBlockCount());
+        System.out.println("   Code line count: " + jspAnalysisResult.getJavaCodeLineCount());
+        System.out.println("   Custom tags: " + jspAnalysisResult.getCustomTaglibs().size());
+        System.out.println("   Server references: " + jspAnalysisResult.getServerSpecificReferences().size());
+        System.out.println("   EL expressions: " + jspAnalysisResult.getElExpressions().size());
     }
 
     public void parseWebXml(File webXmlParseoutput, SourceFolderDAO sourceFolderDAO) throws IOException {
@@ -634,6 +671,7 @@ public class ParsingUtil {
                 "web.xml",
                 "web.xml",
                 (doc, xmlData) -> {
+                    // Extract <security-constraint> security constraints (URL pattern + roles)
                     List<Map<String, Object>> securityList = new ArrayList<>();
                     NodeList securityConstraints = doc.getElementsByTagName("security-constraint");
                     for (int i = 0; i < securityConstraints.getLength(); i++) {
@@ -666,6 +704,7 @@ public class ParsingUtil {
                     }
                     xmlData.put("securityConstraints", securityList);
 
+                    // Extract <security-role> security role list
                     List<String> rolesList = new ArrayList<>();
                     NodeList securityRoles = doc.getElementsByTagName("security-role");
                     for (int i = 0; i < securityRoles.getLength(); i++) {
@@ -677,6 +716,7 @@ public class ParsingUtil {
                     }
                     xmlData.put("securityRoles", rolesList);
 
+                    // Extract <error-page> error page mapping (exception type / HTTP status code -> page)
                     List<Map<String, Object>> errorPagesList = new ArrayList<>();
                     NodeList errorPages = doc.getElementsByTagName("error-page");
                     for (int i = 0; i < errorPages.getLength(); i++) {
@@ -703,6 +743,7 @@ public class ParsingUtil {
                     }
                     xmlData.put("errorPages", errorPagesList);
 
+                    // Extract <session-config> session timeout configuration
                     Map<String, Object> keyConfigs = new HashMap<>();
                     NodeList sessionConfigs = doc.getElementsByTagName("session-config");
                     if (sessionConfigs.getLength() > 0) {
@@ -710,12 +751,13 @@ public class ParsingUtil {
                         String timeout = getTagValue(sc, "session-timeout");
                         if (!timeout.isEmpty()) {
                             keyConfigs.put("sessionTimeoutMinutes", timeout);
-                            keyConfigs.put("note", "建議移到環境變數或外部配置");
+                            keyConfigs.put("note", "Recommend moving to environment variables or external configuration");
                         }
                     }
 
                     xmlData.put("keyConfigs", keyConfigs);
 
+                    // Extract <resource-ref> JNDI resource references
                     List<Map<String, Object>> resourcesList = new ArrayList<>();
                     NodeList resources = doc.getElementsByTagName("resource-ref");
                     for (int i = 0; i < resources.getLength(); i++) {
@@ -723,11 +765,12 @@ public class ParsingUtil {
                         Map<String, Object> rMap = new HashMap<>();
                         rMap.put("resRefName", getTagValue(r, "res-ref-name"));
                         rMap.put("resType", getTagValue(r, "res-type"));
-                        rMap.put("risk", "JNDI 必须改成环境变量");
+                        rMap.put("risk", "JNDI must be changed to environment variables");
                         resourcesList.add(rMap);
                     }
                     xmlData.put("resourceRefs", resourcesList);
 
+                    // Extract web.xml version (with DTD fallback parsing)
                     Element root = doc.getDocumentElement();
 
                     String version = root.getAttribute("version");
@@ -742,6 +785,7 @@ public class ParsingUtil {
                     xmlData.put("version", version.isEmpty() ? "unknown" : version);
                     xmlData.put("metadataComplete", "true".equals(root.getAttribute("metadata-complete")));
 
+                    // Extract <context-param> context parameters
                     List<Map<String, Object>> contextParams = new ArrayList<>();
                     NodeList cpList = doc.getElementsByTagName("context-param");
                     for (int i = 0; i < cpList.getLength(); i++) {
@@ -753,6 +797,7 @@ public class ParsingUtil {
                     }
                     xmlData.put("contextParams", contextParams);
 
+                    // Extract <filter> filter definitions
                     List<Map<String, Object>> filters = new ArrayList<>();
                     NodeList filterList = doc.getElementsByTagName("filter");
                     for (int i = 0; i < filterList.getLength(); i++) {
@@ -764,6 +809,7 @@ public class ParsingUtil {
                     }
                     xmlData.put("filters", filters);
 
+                    // Extract <servlet> definitions
                     List<Map<String, Object>> servlets = new ArrayList<>();
                     NodeList servletList = doc.getElementsByTagName("servlet");
                     for (int i = 0; i < servletList.getLength(); i++) {
@@ -776,6 +822,7 @@ public class ParsingUtil {
                     }
                     xmlData.put("servlets", servlets);
 
+                    // Extract <listener> listener classes
                     List<String> listeners = new ArrayList<>();
                     NodeList listenerList = doc.getElementsByTagName("listener");
                     for (int i = 0; i < listenerList.getLength(); i++) {
@@ -783,6 +830,7 @@ public class ParsingUtil {
                     }
                     xmlData.put("listeners", listeners);
 
+                    // Extract session-config (kept again for backward compatibility)
                     Map<String, Object> sessionConfig = new HashMap<>();
                     NodeList scList = doc.getElementsByTagName("session-config");
                     if (scList.getLength() > 0) {
@@ -791,6 +839,7 @@ public class ParsingUtil {
                     }
                     xmlData.put("sessionConfig", sessionConfig);
 
+                    // Extract <welcome-file-list> welcome files
                     List<String> welcomeFiles = new ArrayList<>();
                     NodeList wfList = doc.getElementsByTagName("welcome-file");
                     for (int i = 0; i < wfList.getLength(); i++) {
@@ -798,6 +847,7 @@ public class ParsingUtil {
                     }
                     xmlData.put("welcomeFiles", welcomeFiles);
 
+                    // Extract <taglib> tag library references
                     List<Map<String, Object>> taglibs = new ArrayList<>();
                     NodeList tList = doc.getElementsByTagName("taglib");
                     for (int i = 0; i < tList.getLength(); i++) {
@@ -809,6 +859,7 @@ public class ParsingUtil {
                     }
                     xmlData.put("taglibs", taglibs);
 
+                    // Extract <login-config> login configuration (auth method / form page)
                     Map<String, Object> loginConfig = new HashMap<>();
                     NodeList lcList = doc.getElementsByTagName("login-config");
                     if (lcList.getLength() > 0) {
@@ -818,6 +869,7 @@ public class ParsingUtil {
                     }
                     xmlData.put("loginConfig", loginConfig);
 
+                    // Extract <mime-mapping> MIME type mappings
                     List<Map<String, Object>> mimeMappings = new ArrayList<>();
                     NodeList mmList = doc.getElementsByTagName("mime-mapping");
                     for (int i = 0; i < mmList.getLength(); i++) {
@@ -834,6 +886,7 @@ public class ParsingUtil {
 
     public void parsePersistenceXml(File output, SourceFolderDAO sourceFolderDAO) throws IOException {
         parseGenericXml(output, sourceFolderDAO, "persistence.xml", "persistence.xml", (doc, xmlData) -> {
+            // Extract all persistence-unit configurations
             List<Map<String, Object>> unitsList = new ArrayList<>();
             NodeList units = doc.getElementsByTagName("persistence-unit");
 
@@ -841,10 +894,12 @@ public class ParsingUtil {
                 Element unit = (Element) units.item(i);
                 Map<String, Object> m = new HashMap<>();
 
+                // Extract JTA/non-JTA data sources
                 m.put("name", unit.getAttribute("name"));
                 m.put("jtaDataSource", getTagValue(unit, "jta-data-source"));
                 m.put("nonJtaDataSource", getTagValue(unit, "non-jta-data-source"));
 
+                // Extract entity class list
                 List<String> classList = new ArrayList<>();
                 NodeList classNodes = unit.getElementsByTagName("class");
                 for (int j = 0; j < classNodes.getLength(); j++) {
@@ -855,6 +910,7 @@ public class ParsingUtil {
                 }
                 m.put("classes", classList);
 
+                // Extract properties attributes
                 m.put("properties", parseProperties(unit));
 
                 unitsList.add(m);
@@ -889,6 +945,7 @@ public class ParsingUtil {
 
     public void parseEjbJarXml(File output, SourceFolderDAO sourceFolderDAO) throws IOException {
         parseGenericXml(output, sourceFolderDAO, "ejb-jar.xml", "ejb-jar.xml", (doc, xmlData) -> {
+            // Extract <session> Bean (Stateless/Stateful) configuration
             List<Map<String, Object>> sessionBeans = new ArrayList<>();
             NodeList sessions = doc.getElementsByTagName("session");
             for (int i = 0; i < sessions.getLength(); i++) {
@@ -901,6 +958,7 @@ public class ParsingUtil {
             }
             xmlData.put("sessionBeans", sessionBeans);
 
+            // Extract <message-driven> Bean configuration
             List<Map<String, Object>> mdbBeans = new ArrayList<>();
             NodeList mdbNodes = doc.getElementsByTagName("message-driven");
             for (int i = 0; i < mdbNodes.getLength(); i++) {
@@ -912,6 +970,7 @@ public class ParsingUtil {
             }
             xmlData.put("messageDrivenBeans", mdbBeans);
 
+            // Extract <container-transaction> transaction attributes
             List<Map<String, Object>> transactions = new ArrayList<>();
             NodeList txNodes = doc.getElementsByTagName("container-transaction");
             for (int i = 0; i < txNodes.getLength(); i++) {
@@ -922,8 +981,10 @@ public class ParsingUtil {
             }
             xmlData.put("containerTransactions", transactions);
 
+            // Extract ejb-client-jar reference
             xmlData.put("ejbClientJar", getTagValue(doc, "ejb-client-jar"));
 
+            // Extract <interceptor> and <interceptor-binding>
             List<Map<String, Object>> interceptors = new ArrayList<>();
             NodeList interceptorNodes = doc.getElementsByTagName("interceptor");
             for (int i = 0; i < interceptorNodes.getLength(); i++) {
@@ -945,6 +1006,7 @@ public class ParsingUtil {
             }
             xmlData.put("interceptorBindings", bindings);
 
+            // Extract <entity> Bean (EJB 2.x CMP/BMP)
             List<Map<String, Object>> entityBeans = new ArrayList<>();
             NodeList entityNodes = doc.getElementsByTagName("entity");
             for (int i = 0; i < entityNodes.getLength(); i++) {
@@ -961,6 +1023,7 @@ public class ParsingUtil {
 
     public void parseFacesConfigXml(File output, SourceFolderDAO sourceFolderDAO) throws IOException {
         parseGenericXml(output, sourceFolderDAO, "faces-config.xml", "faces-config.xml", (doc, xmlData) -> {
+            // Extract <managed-bean> managed beans and their scopes
             List<Map<String, Object>> beansList = new ArrayList<>();
             NodeList managedBeans = doc.getElementsByTagName("managed-bean");
             for (int i = 0; i < managedBeans.getLength(); i++) {
@@ -973,6 +1036,7 @@ public class ParsingUtil {
             }
             xmlData.put("managedBeans", beansList);
 
+            // Extract <phase-listener> lifecycle listeners
             List<String> phaseListeners = new ArrayList<>();
             NodeList plNodes = doc.getElementsByTagName("phase-listener");
             for (int i = 0; i < plNodes.getLength(); i++) {
@@ -980,6 +1044,7 @@ public class ParsingUtil {
             }
             xmlData.put("phaseListeners", phaseListeners);
 
+            // Extract <lifecycle><view-handler> custom view handlers
             Element lifecycleEl = (Element) doc.getElementsByTagName("lifecycle").item(0);
             if (lifecycleEl != null) {
                 NodeList vhNodes = lifecycleEl.getElementsByTagName("view-handler");
@@ -994,17 +1059,20 @@ public class ParsingUtil {
 
     public void parseApplicationXml(File output, SourceFolderDAO sourceFolderDAO) throws IOException {
         parseGenericXml(output, sourceFolderDAO, "application.xml", "application.xml", (doc, xmlData) -> {
+            // Walk all <module> and detect module type (web/ejb/java)
             List<Map<String, Object>> modulesList = new ArrayList<>();
             NodeList modules = doc.getElementsByTagName("module");
             for (int i = 0; i < modules.getLength(); i++) {
                 Element module = (Element) modules.item(i);
                 Map<String, Object> moduleMap = new HashMap<>();
                 String type = "";
+                // Determine module type by child element tag
                 if (module.getElementsByTagName("web").getLength() > 0) type = "web";
                 else if (module.getElementsByTagName("ejb").getLength() > 0) type = "ejb";
                 else if (module.getElementsByTagName("java").getLength() > 0) type = "java";
                 else type = "unknown";
 
+                // Get corresponding URI by type
                 String uri = "";
                 if ("web".equals(type)) uri = getTagValue(module, "web-uri");
                 else if ("ejb".equals(type)) uri = getTagValue(module, "ejb");
@@ -1022,6 +1090,7 @@ public class ParsingUtil {
         Path root = Paths.get(sourceFolderDAO.getDirPath());
         if (!Files.exists(root) || !Files.isDirectory(root)) return;
 
+        // Walk all .xhtml files, skip build/target output
         List<Path> paths = new ArrayList<>();
         try (Stream<Path> stream = Files.walk(root)) {
             stream.filter(Files::isRegularFile)
@@ -1036,19 +1105,21 @@ public class ParsingUtil {
         }
 
         if (paths.isEmpty()) {
-            System.out.println("=== 无 .xhtml JSF 文件找到（跳过） ===");
+            System.out.println("+No .xhtml JSF files found (skipped) ===");
             return;
         }
 
         for (Path path : paths) {
             File file = path.toFile();
-            System.out.println("分析 JSF 文件: " + file.getName());
+            System.out.println("Analyzing JSF file: " + file.getName());
 
+            // Use Jsoup to analyze each JSF file
             JsfFileInfo jsfInfo = JsfAnalyzer.analyze(file);
 
             jsfFiles.add(jsfInfo);
             analysisResult.getJsfFiles().add(jsfInfo);
 
+            // Detect migration issues
             List<IssueInfo> detected = JsfMigrationIssueDetector.detect(jsfInfo);
             for (IssueInfo issue : detected) {
                 analysisResult.getIssues().add(issue);
@@ -1056,6 +1127,7 @@ public class ParsingUtil {
             }
         }
 
+        // Cross-reference PhaseListener and ViewHandler from faces-config.xml
         List<XmlFileInfo> facesConfigs = analysisResult.getXmlConfigs().get("faces-config.xml");
         if (facesConfigs != null) {
             for (XmlFileInfo fc : facesConfigs) {
@@ -1090,12 +1162,11 @@ public class ParsingUtil {
             }
         }
 
-        Path outputRoot = root.resolve(OutputPath.OUTPUT_BASE_DIR);
-        File jsfJsonFile = outputRoot.resolve(OutputPath.JSF_PARSE_RESULT_PATH).toFile();
-        jsonFileService.generateJsonArray(jsfFiles, jsfJsonFile.getAbsolutePath());
+        // Generate JSF JSON report
+        jsonFileService.generateJsonArray(jsfFiles, jsfFilesParseOutput.getAbsolutePath());
 
-        System.out.println("JSF JSON 报告生成完成 → " + jsfJsonFile.getAbsolutePath());
-        System.out.println("   共分析 " + paths.size() + " 个 JSF 文件");
+        System.out.println("JSF JSON report generated -> " + jsfFilesParseOutput.getAbsolutePath());
+        System.out.println("   Total analyzed: " + paths.size() + " JSF files");
     }
 
     @Transactional
@@ -1103,16 +1174,18 @@ public class ParsingUtil {
         String rootPath = sourceFolderDAO.getDirPath();
         File rootDir = new File(rootPath);
         if (!rootDir.exists() || !rootDir.isDirectory()) {
-            throw new IOException("项目目录不存在: " + rootPath);
+            throw new IOException("Project directory does not exist: " + rootPath);
         }
 
+        // Create output directory structure
         File outputFolder = new File(rootPath, OutputPath.OUTPUT_BASE_DIR);
         if (!outputFolder.exists()) {
             if (!outputFolder.mkdirs()) {
-                throw new IOException("无法创建 output 目录: " + outputFolder.getAbsolutePath());
+                throw new IOException("Unable to create output directory: " + outputFolder.getAbsolutePath());
             }
         }
 
+        // Define all output file paths
         File analysisOutput     = new File(outputFolder, OutputPath.JAVA_PARSE_RESULT_PATH);
         File errorLog           = new File(outputFolder, OutputPath.JAVA_PARSE_ERROR_LOG_PATH);
         File jspOutput          = new File(outputFolder, OutputPath.JSP_PARSE_RESULT_PATH);
@@ -1125,6 +1198,7 @@ public class ParsingUtil {
         File jsfOutput          = new File(outputFolder, OutputPath.JSF_PARSE_RESULT_PATH);
         File issuesOutput       = new File(outputFolder, OutputPath.ISSUES_PARSE_RESULT_PATH);
 
+        // Clear all previous analysis results
         analysisResult.getJavaClasses().clear();
         if (analysisResult.getJsfFiles() != null) analysisResult.getJsfFiles().clear();
         if (analysisResult.getXmlConfigs() != null) analysisResult.getXmlConfigs().clear();
@@ -1137,6 +1211,7 @@ public class ParsingUtil {
         jsfFiles.clear();
         jspInfos.clear();
 
+        // Execute all parsers in sequence
         parsing(analysisOutput, errorLog, sourceFolderDAO);
 
         parsingJsp(jspOutput, jspError, sourceFolderDAO);
@@ -1150,26 +1225,29 @@ public class ParsingUtil {
         parseEjbJarXml(ejbJarXmlOutput, sourceFolderDAO);
         parseApplicationXml(applicationXmlOutput, sourceFolderDAO);
 
+        // Aggregate all detected issues and write to JSON
         if (!allIssues.isEmpty()) {
             jsonFileService.generateJsonArray(allIssues, issuesOutput.getAbsolutePath());
-            System.out.println("Issues JSON 报告生成完成 → " + issuesOutput.getAbsolutePath());
-            System.out.println("   共包含 " + allIssues.size() + " 个问题");
+            System.out.println("Issues JSON report generated -> " + issuesOutput.getAbsolutePath());
+            System.out.println("   Total: " + allIssues.size() + " issues");
         } else {
-            System.out.println("未发现任何问题，跳过 Issues JSON 报告生成");
+            System.out.println("No issues found, skipping Issues JSON report generation");
         }
 
-        System.out.println("完整静态分析完成！");
-        System.out.println(" - TXT 报告目录: " + outputFolder.getAbsolutePath());
-        System.out.println(" - JSON 报告: analysis_result_" + sourceFolderDAO.getId() + "*.json");
-        System.out.println(" - 数据库记录已更新，source_folder_id: " + sourceFolderDAO.getId());
+        System.out.println("Full static analysis complete!");
+        System.out.println(" - TXT report directory: " + outputFolder.getAbsolutePath());
+        System.out.println(" - JSON report: analysis_result_" + sourceFolderDAO.getId() + "*.json");
+        System.out.println(" - Database record updated, source_folder_id: " + sourceFolderDAO.getId());
     }
 
     public void parsePomXmlFile(File pomOutput, SourceFolderDAO sourceFolderDAO) throws IOException {
         parseGenericXml(pomOutput, sourceFolderDAO, "pom.xml", "pom.xml", (doc, xmlData) -> {
+            // Extract Java compile version
             String javaVersion = getTagValue(doc, "java.version");
 
             xmlData.put("javaVersion", javaVersion.isEmpty() ? "unknown" : javaVersion);
 
+            // Extract <parent> POM parent info
             NodeList parents = doc.getElementsByTagName("parent");
 
             for(int i = 0; i < parents.getLength(); i++)
@@ -1182,6 +1260,7 @@ public class ParsingUtil {
                 xmlData.put("parent", parentInfo);
             }
 
+            // Extract <dependencies> dependency list
             List<String> deps = new ArrayList<>();
             NodeList dependencies = doc.getElementsByTagName("dependencies");
             for (int i = 0; i < dependencies.getLength(); i++) {
@@ -1189,10 +1268,11 @@ public class ParsingUtil {
                 String g = getTagValue(dep, "groupId");
                 String a = getTagValue(dep, "artifactId");
                 String v = getTagValue(dep, "version");
-                deps.add(g + ":" + a + ":" + (v.isEmpty() ? "未指定" : v));
+                deps.add(g + ":" + a + ":" + (v.isEmpty() ? "unspecified" : v));
             }
             xmlData.put("dependencies", deps);
 
+            // Extract <plugin> build plugin list
             List<String> plugins = new ArrayList<>();
             NodeList pluginNodes = doc.getElementsByTagName("plugin");
             for (int i = 0; i < pluginNodes.getLength(); i++) {
@@ -1204,23 +1284,25 @@ public class ParsingUtil {
             }
             xmlData.put("plugins", plugins);
 
+            // Compatibility assessment: Java version / dependency count / Fat Jar detection
             Map<String, Object> compatibility = new HashMap<>();
 
             List<String> supportedJavaVersions = Arrays.asList("8", "11", "17", "21");
             boolean javaVersionCompatible = false;
-            String javaCompatibilityAssessment = "未知";
+            String javaCompatibilityAssessment = "unknown";
 
             if (javaVersion.isEmpty()) {
-                javaCompatibilityAssessment = "未指定 Java 版本";
+                javaCompatibilityAssessment = "Java version not specified";
 
                 IssueInfo javaIssue = new IssueInfo();
                 javaIssue.severity = "Medium";
-                javaIssue.message = "未指定 Java 版本，可能导致构建或运行问题";
+                javaIssue.message = "Java version not specified, may cause build or runtime issues";
                 javaIssue.location = "pom.xml";
                 javaIssue.className = "pom.xml";
                 javaIssue.source = "pom_analysis";
                 allIssues.add(javaIssue);
             } else {
+                // Extract major version number (supports 1.8 format)
                 String majorVersion = javaVersion;
                 if (javaVersion.startsWith("1.")) {
                     majorVersion = javaVersion.substring(2);
@@ -1229,13 +1311,13 @@ public class ParsingUtil {
 
                 if (supportedJavaVersions.contains(majorVersion)) {
                     javaVersionCompatible = true;
-                    javaCompatibilityAssessment = "兼容 (Java " + majorVersion + ")";
+                    javaCompatibilityAssessment = "Compatible (Java " + majorVersion + ")";
                 } else {
-                    javaCompatibilityAssessment = "不兼容 (Java " + majorVersion + "，支持版本: " + String.join(", ", supportedJavaVersions) + ")";
+                    javaCompatibilityAssessment = "Incompatible (Java " + majorVersion + ", supported versions: " + String.join(", ", supportedJavaVersions) + ")";
 
                     IssueInfo javaIssue = new IssueInfo();
                     javaIssue.severity = "High";
-                    javaIssue.message = "Java 版本 " + majorVersion + " 可能与应用服务器不兼容";
+                    javaIssue.message = "Java version " + majorVersion + " may be incompatible with the application server";
                     javaIssue.location = "pom.xml";
                     javaIssue.className = "pom.xml";
                     javaIssue.source = "pom_analysis";
@@ -1246,27 +1328,29 @@ public class ParsingUtil {
             compatibility.put("javaVersionCompatible", javaVersionCompatible);
             compatibility.put("javaCompatibilityAssessment", javaCompatibilityAssessment);
 
+            // Dependency count assessment: Large / Medium / Small
             int dependencyCount = deps.size();
             String dependencySizeAssessment;
             if (dependencyCount > 50) {
-                dependencySizeAssessment = "大型依赖 (" + dependencyCount + " 个依赖)，可能影响 WAR 包大小和启动时间";
+                dependencySizeAssessment = "Large dependency (" + dependencyCount + " dependencies), may affect WAR file size and startup time";
 
                 IssueInfo depIssue = new IssueInfo();
                 depIssue.severity = "Medium";
-                depIssue.message = "项目包含大量依赖 (" + dependencyCount + " 个)，可能导致 WAR 包超过 500MB";
+                depIssue.message = "Project contains a large number of dependencies (" + dependencyCount + "), may cause WAR file to exceed 500MB";
                 depIssue.location = "pom.xml";
                 depIssue.className = "pom.xml";
                 depIssue.source = "pom_analysis";
                 allIssues.add(depIssue);
             } else if (dependencyCount > 20) {
-                dependencySizeAssessment = "中等依赖 (" + dependencyCount + " 个依赖)";
+                dependencySizeAssessment = "Medium dependency (" + dependencyCount + " dependencies)";
             } else {
-                dependencySizeAssessment = "小型依赖 (" + dependencyCount + " 个依赖)";
+                dependencySizeAssessment = "Small dependency (" + dependencyCount + " dependencies)";
             }
 
             compatibility.put("dependencyCount", dependencyCount);
             compatibility.put("dependencySizeAssessment", dependencySizeAssessment);
 
+            // Detect Fat Jar / Uber Jar plugins (not suitable for traditional application servers)
             boolean hasFatJarPlugin = plugins.stream().anyMatch(plugin ->
                 plugin.contains("spring-boot-maven-plugin") ||
                 plugin.contains("maven-shade-plugin") ||
@@ -1274,30 +1358,31 @@ public class ParsingUtil {
             );
 
             if (hasFatJarPlugin) {
-                compatibility.put("fatJarWarning", "检测到 Fat Jar/Uber Jar 插件，可能不适用于传统应用服务器部署");
+                compatibility.put("fatJarWarning", "Fat Jar/Uber Jar plugin detected, may not be suitable for traditional application server deployment");
 
                 IssueInfo fatJarIssue = new IssueInfo();
                 fatJarIssue.severity = "High";
-                fatJarIssue.message = "检测到 Fat Jar/Uber Jar 插件，传统应用服务器需要 WAR 部署";
+                fatJarIssue.message = "Fat Jar/Uber Jar plugin detected, traditional application servers require WAR deployment";
                 fatJarIssue.location = "pom.xml";
                 fatJarIssue.className = "pom.xml";
                 fatJarIssue.source = "pom_analysis";
                 allIssues.add(fatJarIssue);
             } else {
-                compatibility.put("fatJarWarning", "未检测到 Fat Jar 插件，适合传统应用服务器部署");
+                compatibility.put("fatJarWarning", "No Fat Jar plugin detected, suitable for traditional application server deployment");
             }
 
+            // Comprehensive compatibility assessment
             boolean overallCompatible = javaVersionCompatible && !hasFatJarPlugin && dependencyCount <= 100;
             String overallAssessment;
 
             if (overallCompatible) {
-                overallAssessment = "项目结构与应用服务器兼容性良好";
+                overallAssessment = "Project structure is well compatible with application servers";
             } else {
-                overallAssessment = "项目可能存在与应用服务器的兼容性问题";
+                overallAssessment = "Project may have compatibility issues with application servers";
 
                 IssueInfo overallIssue = new IssueInfo();
                 overallIssue.severity = "Medium";
-                overallIssue.message = "项目结构可能与应用服务器存在兼容性问题";
+                overallIssue.message = "Project structure may have compatibility issues with application servers";
                 overallIssue.location = "pom.xml";
                 overallIssue.className = "pom.xml";
                 overallIssue.source = "pom_analysis";
@@ -1309,6 +1394,7 @@ public class ParsingUtil {
 
             xmlData.put("containerCompatibility", compatibility);
 
+            // Count <profile> elements
             NodeList profiles = doc.getElementsByTagName("profile");
             xmlData.put("profileCount", profiles.getLength());
         });
@@ -1355,11 +1441,11 @@ public class ParsingUtil {
         }
 
         if (xmlPaths.isEmpty()) {
-            System.out.println("=== " + xmlType + " 未找到（跳过） ===");
+            System.out.println("=== " + xmlType + " not found (skipped) ===");
             return;
         }
 
-        System.out.println("找到 " + xmlPaths.size() + " 个 " + xmlType + " 文件");
+        System.out.println("Found " + xmlPaths.size() + " " + xmlType + " files");
 
         for (Path path : xmlPaths) {
             XmlFileInfo xmlFileInfo = new XmlFileInfo();
@@ -1380,7 +1466,7 @@ public class ParsingUtil {
                 xmlFileInfo.setData(xmlData);
 
             } catch (Exception e) {
-                System.out.println(xmlType + " 解析失败: " + xmlFile.getName() + " → " + e.getMessage());
+                System.out.println(xmlType + " parse failed: " + xmlFile.getName() + " → " + e.getMessage());
             }
 
             xmlFileInfos.add(xmlFileInfo);
@@ -1391,12 +1477,12 @@ public class ParsingUtil {
         File parentDir = outputFile.getParentFile();
         if (parentDir != null && !parentDir.exists()) {
             if (!parentDir.mkdirs()) {
-                throw new IOException("无法创建输出目录: " + parentDir.getAbsolutePath());
+                throw new IOException("Unable to create output directory: " + parentDir.getAbsolutePath());
             }
         }
 
         jsonFileService.generateJsonArray(xmlFileInfos, outputFile.getAbsolutePath());
 
-        System.out.println(xmlType + " 解析完成，已写入 → " + outputFile.getAbsolutePath());
+        System.out.println(xmlType + " parse complete, written to -> " + outputFile.getAbsolutePath());
     }
 }

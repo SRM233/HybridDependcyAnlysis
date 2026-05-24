@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 
-//封装返回类Result，参考链接：https://developer.aliyun.com/article/1248568
+// Encapsulated return class Result, reference: https://developer.aliyun.com/article/1248568
 
 @Data
 @NoArgsConstructor
@@ -20,7 +20,7 @@ public class Result <T>{
 //        return new Result<>(200, "Success", data);
 //    }
 
-    //只返回成功信息
+    // Return success message only
     public static<T> Result<T> success()
     {
         Result result = new Result<>();
@@ -32,7 +32,7 @@ public class Result <T>{
     }
 
 
-    //返回成功信息和数据
+    // Return success message and data
     public static<T> Result<T> success(T data)
     {
         Result result = new Result<>();
@@ -42,7 +42,7 @@ public class Result <T>{
         return result;
     }
 
-    //返回输入的message和数据
+    // Return input message and data
     public static<T> Result<T> success(String message, T data)
     {
         Result result = new Result<>();
@@ -52,7 +52,7 @@ public class Result <T>{
         return result;
     }
 
-    //返回失败信息
+    // Return failure message
     public static Result fail(String s) {
         Result result = new Result<>();
         result.setCode(400);

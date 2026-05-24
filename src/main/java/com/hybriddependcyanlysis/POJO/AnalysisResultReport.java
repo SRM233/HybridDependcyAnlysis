@@ -3,7 +3,7 @@ package com.hybriddependcyanlysis.POJO;
 import Common.ClassInfos.IssueInfo;
 import Common.ClassInfos.JavaClassInfo;
 import Common.JsfFileInfo.JsfFileInfo;
-import Common.JspFileInfo;
+import Common.JspFileInfo.JspFileInfo;
 import Common.XmlFileInfo.XmlFileInfo;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,25 +19,25 @@ public class AnalysisResultReport {
     private String projectPath;
     private LocalDateTime analysisTime;
 
-    // 依赖图（直接用你现有的 Map）
+    // Dependency graph (using existing Map)
     private Map<String, Set<String>> dependencyGraph = new HashMap<>();
 
-    // Java 类信息（你在 parseClass 中收集的）
+    // Java class info (collected in parseClass)
     private List<JavaClassInfo> javaClasses = new ArrayList<>();
 
-    // XML 配置（按类型分组）
+    // XML configurations (grouped by type)
     private Map<String, List<XmlFileInfo>> xmlConfigs = new HashMap<>();
 
-    // JSF 文件信息
+    // JSF file info
     private List<JsfFileInfo> jsfFiles = new ArrayList<>();
 
-    // JSP 文件信息
+    // JSP file info
     private List<JspFileInfo> jspInfos = new ArrayList<>();
 
-    // 所有 Issue（全局收集）
+    // All Issues (globally collected)
     private List<IssueInfo> issues = new ArrayList<>();
 
-    // 统计
+    // Statistics
     private int totalJavaFiles = 0;
     private int totalXhtmlFiles = 0;
     private int totalXmlFiles = 0;

@@ -5,7 +5,7 @@
 <mapper namespace="com.hybriddependcyanlysis.Mapper.AnalysisReportMapper">
 
     <insert id="insertResult">
-        insert into analysis_results (name, create_time, update_time, user_id, source_folder_id, parse_output_id, path)
+        insert into analysis_report (name, create_time, update_time, user_id, source_folder_id, parse_output_id, path)
         VALUES (#{name}, #{createTime},#{updateTime},#{userId},#{sourceFolderId},#{parseOutputId}, #{path})
     </insert>
     <update id="updateResult">

@@ -13,10 +13,10 @@ public class UserContextInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        // 1. 从请求头/Token 解析登录用户（示例：简化 Token 解析逻辑）
+        // 1. Parse logged-in user from request header / Token (example: simplified Token parsing logic)
         String token = request.getHeader("Authorization");
         if (token != null && token.startsWith("Bearer ")) {
-            UserLoginDTO user = parseToken(token.substring(7)); // 自定义 Token 解析逻辑
+            UserLoginDTO user = parseToken(token.substring(7)); // Custom Token parsing logic
             UserContextHolder.setUser(user);
         }
         return true;
@@ -24,13 +24,13 @@ public class UserContextInterceptor implements HandlerInterceptor {
 
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
-        // 2. 请求结束后强制清理（核心！避免线程复用导致数据串用）
+        // 2. Force cleanup after request completion (critical! prevents data leakage from thread reuse)
         UserContextHolder.clear();
     }
 
-    // 模拟 Token 解析
+    // Simulate Token parsing
     private UserLoginDTO parseToken(String token) {
-        // 实际场景：从 Redis/数据库查询用户信息
+        // Actual scenario: query user info from Redis/database
         return new UserLoginDTO(1, "admin", token, Arrays.asList("admin:all"));
     }
 }

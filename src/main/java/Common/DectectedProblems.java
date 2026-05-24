@@ -7,24 +7,24 @@ import java.util.Set;
 
 public class DectectedProblems {
     public static final Set<String> TARGET_ANNOTATIONS = Set.of(
-            // EJB 有状态/无状态/单例
+            // EJB Stateful/Stateless/Singleton
             "jakarta.ejb.Stateful", "javax.ejb.Stateful",
             "jakarta.ejb.Stateless", "javax.ejb.Stateless",
             "jakarta.ejb.Singleton", "javax.ejb.Singleton",
 
-            // 消息驱动 Bean
+            // Message-Driven Bean
             "jakarta.ejb.MessageDriven", "javax.ejb.MessageDriven",
 
-            // EJB 远程调用
+            // EJB remote invocation
             "jakarta.ejb.Remote", "javax.ejb.Remote",
 
-            // EJB 本地调用（可保留或移除，视严格程度而定）
+            // EJB local invocation (can keep or remove, depending on strictness)
             // "jakarta.ejb.Local", "javax.ejb.Local",
 
-            // 容器管理的持久化上下文
+            // Container-managed persistence context
             "jakarta.persistence.PersistenceContext", "javax.persistence.PersistenceContext",
 
-            // JNDI 资源注入
+            // JNDI resource injection
             "jakarta.annotation.Resource", "javax.annotation.Resource"
     );
 

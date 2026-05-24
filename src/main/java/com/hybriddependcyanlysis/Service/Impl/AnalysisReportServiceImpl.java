@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.Function;
 
 @Service
@@ -20,24 +22,29 @@ public class AnalysisReportServiceImpl implements AnalysisReportService {
 
     private Object getReportByMapperFunction(AnalysisResultDTO analysisResultDTO, Function<AnalysisResultDTO, AnalysisReportDAO> mapperFunction) {
         AnalysisReportDAO analysisReportDAO = mapperFunction.apply(analysisResultDTO);
-        if(analysisReportDAO == null)
-        {
-            throw new RuntimeException("AnalysisResultDAO is null");
+        if(analysisReportDAO == null) {
+            Map<String, Object> error = new LinkedHashMap<>();
+            error.put("code", 404);
+            error.put("message", "Report not generated. Please run the analysis on the Analysis Results page first");
+            return error;
         }
 
         File filePath = new File(analysisReportDAO.getPath());
-
-        if(!filePath.exists())
-        {
-            throw new RuntimeException(filePath + " does not exist");
+        if(!filePath.exists()) {
+            Map<String, Object> error = new LinkedHashMap<>();
+            error.put("code", 404);
+            error.put("message", "Report file does not exist: " + filePath.getAbsolutePath() + ". Please re-run the analysis");
+            return error;
         }
 
         ObjectMapper objectMapper = new ObjectMapper();
         try {
-            // 读取JSON文件并解析为Java对象
             return objectMapper.readValue(filePath, Object.class);
         } catch (IOException e) {
-            throw new RuntimeException("读取JSON文件失败", e);
+            Map<String, Object> error = new LinkedHashMap<>();
+            error.put("code", 500);
+            error.put("message", "Failed to read report file. File may be corrupted");
+            return error;
         }
     }
 

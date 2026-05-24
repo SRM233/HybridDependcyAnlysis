@@ -1,5 +1,7 @@
 package Common;
 
+import Common.JspFileInfo.JspFileInfo;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -23,7 +25,7 @@ public class JspContentAnalyzer {
             analyzeDirectivesAndEL(contentWithoutJspComments, result);
 
         } catch (IOException e) {
-            System.err.println("读取JSP文件失败: " + jspFile.getAbsolutePath() + " - " + e.getMessage());
+            System.err.println("Failed to read JSP file: " + jspFile.getAbsolutePath() + " - " + e.getMessage());
         }
 
         return result;

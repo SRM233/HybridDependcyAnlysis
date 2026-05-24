@@ -1,4 +1,4 @@
-package Common;
+package Common.JspFileInfo;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -16,7 +16,7 @@ public class JspFileInfo {
     public List<String> includes = new ArrayList<>();
     public List<String> beans = new ArrayList<>();
     
-    // JSP内容分析字段
+    // JSP content analysis fields
     private List<String> customTaglibs = new ArrayList<>();
     private List<String> serverSpecificReferences = new ArrayList<>();
     private int javaCodeBlockCount = 0;
@@ -27,7 +27,7 @@ public class JspFileInfo {
     private List<String> declarations = new ArrayList<>();
     private List<String> expressions = new ArrayList<>();
     
-    // 辅助方法
+    // Helper methods
     public void addCustomTaglib(String taglib) {
         if (!customTaglibs.contains(taglib)) {
             customTaglibs.add(taglib);

@@ -47,17 +47,24 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void register(UserDTO userDTO) {
+        try {
+            UserDAO existing = userMapper.getUserByName(userDTO.getUsername());
+            if (existing != null) {
+                throw new RuntimeException("Username already exists");
+            }
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Expected one result")) {
+                throw new RuntimeException("Username already exists");
+            }
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Username already exists");
+        }
         UserDAO userDAO = new UserDAO();
-        //Use BeanUtil to copy properties to userDAO
         BeanUtils.copyProperties(userDTO, userDAO);
-
-        //Set creation time and update time to current
         userDAO.setCreateTime(LocalDateTime.now());
         userDAO.setUpdateTime(LocalDateTime.now());
-
-        //Insert userDAO into user table
         userMapper.insertUser(userDAO);
-
     }
 
     @Override

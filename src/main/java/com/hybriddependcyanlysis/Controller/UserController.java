@@ -32,9 +32,12 @@ public class UserController {
     @PostMapping("/register")
     public Result<UserLoginDTO> register(@RequestBody  UserDTO userDTO) {
         log.info("Registering user:{}", userDTO);
-        userService.register(userDTO);
-
-        return Result.success();
+        try {
+            userService.register(userDTO);
+            return Result.success();
+        } catch (RuntimeException e) {
+            return Result.fail(e.getMessage());
+        }
     }
 
     // User login request

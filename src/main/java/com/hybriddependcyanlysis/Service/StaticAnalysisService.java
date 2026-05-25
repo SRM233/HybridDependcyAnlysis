@@ -42,8 +42,6 @@ public interface StaticAnalysisService {
     void deleteJspContentAnalysis(Integer userId, Integer sourceFolderId);
     void deleteJsfContentAnalysis(Integer userId, Integer sourceFolderId);
 
-    Object JspFileCount(UserDTO userDTO) throws IOException;
-    Object JsfFileCount(UserDTO userDTO) throws IOException;
     Object JspContentAnalysis(UserDTO userDTO) throws IOException;
     Object JsfContentAnalysis(UserDTO userDTO) throws IOException;
 }

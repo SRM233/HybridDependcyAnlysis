@@ -38,11 +38,11 @@ public class StaticAnalysisController {
 //    }
 
 
-    @PostMapping("/JspFilesCount")
-    public Result JspFilesCount(@RequestBody UserDTO userDTO) throws IOException {
-        Object report = staticAnalysisService.JspFileCount(userDTO);
-        return Result.success(report);
-    }
+//    @PostMapping("/JspFilesCount")
+//    public Result JspFilesCount(@RequestBody UserDTO userDTO) throws IOException {
+//        Object report = staticAnalysisService.JspFileCount(userDTO);
+//        return Result.success(report);
+//    }
 
     // User annotation analysis request
     @PostMapping("/annotationAnalysis")

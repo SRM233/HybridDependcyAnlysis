@@ -59,7 +59,6 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
     );
 
 
-    @Override
     @Transactional
     public Object JspFileCount(UserDTO userDTO) throws IOException {
         Integer userId = UserContextHolder.getUserId();
@@ -133,7 +132,6 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         return report;
     }
 
-    @Override
     @Transactional
     public Object JsfFileCount(UserDTO userDTO) throws IOException {
         Integer userId = UserContextHolder.getUserId();
@@ -483,7 +481,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         // Save to database (recommended)
         // astMapper.saveWebXmlAnalysis(userDTO.getId(), analysis);
 
-        // ====================== Output ======================
+        //Output
         System.out.println("✅ web.xml analysis complete! File: " + fileInfo.filePath);
         System.out.println("   Version: " + version + " | Servlets: " + servlets.size() + " | Filters: " + filters.size());
         System.out.println("   Migration suggestions: " + migrationSuggestions.size() + " items | Modernization score: " + analysis.get("modernizationScore") + "/100");
@@ -911,9 +909,9 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         List<String> migrationSuggestions = new ArrayList<>();
 
         // Global aggregation variables
-        List<String> allJavaVersions = new ArrayList<>();
-        List<String> allDependencies = new ArrayList<>();
-        List<String> allPlugins = new ArrayList<>();
+        Set<String> allJavaVersions = new LinkedHashSet<>();
+        Set<String> allDependencies = new LinkedHashSet<>();
+        Set<String> allPlugins = new LinkedHashSet<>();
         int totalProfileCount = 0;
         boolean hasLegacyServerDep = false;
         boolean hasLowJavaVersion = false;
@@ -961,10 +959,14 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 //            migrationSuggestions.add("⚠️ Legacy Jakarta EE API dependency detected. Recommend upgrading to 10.0+ for container compatibility");
 //        }
 
+        // Deduplicate and clean up: replace all-"unknown" with single entry
+        allJavaVersions.remove("unknown");
+        if (allJavaVersions.isEmpty()) allJavaVersions.add("Not specified");
+
         // Aggregate into analysis report
-        analysis.put("allJavaVersions", allJavaVersions);
-        analysis.put("allDependencies", allDependencies);
-        analysis.put("allPlugins", allPlugins);
+        analysis.put("allJavaVersions", new ArrayList<>(allJavaVersions));
+        analysis.put("allDependencies", new ArrayList<>(allDependencies));
+        analysis.put("allPlugins", new ArrayList<>(allPlugins));
         analysis.put("totalProfileCount", totalProfileCount);
         analysis.put("migrationSuggestions", migrationSuggestions);
         analysis.put("totalSuggestions", migrationSuggestions.size());

@@ -1110,8 +1110,11 @@ public class ParsingUtil {
 
     public void parsePomXmlFile(File pomOutput, SourceFolderDAO sourceFolderDAO) throws IOException {
         parseGenericXml(pomOutput, sourceFolderDAO, "pom.xml", "pom.xml", (doc, xmlData) -> {
-            // Extract Java compile version
+            // Extract Java version (try java.version first, then maven.compiler.source as fallback)
             String javaVersion = getTagValue(doc, "java.version");
+            if (javaVersion.isEmpty()) {
+                javaVersion = getTagValue(doc, "maven.compiler.source");
+            }
 
             xmlData.put("javaVersion", javaVersion.isEmpty() ? "unknown" : javaVersion);
 

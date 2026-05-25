@@ -374,11 +374,6 @@ public class ParsingUtil {
                         shouldReport = true;
                         issueType = "JndiLookup (hardcoded JNDI name likely)";
                     }
-                    else if (declaringTypeName.equals("java.lang.ThreadLocal") &&
-                            ("set".equals(methodName) || "get".equals(methodName))) {
-                        shouldReport = true;
-                        issueType = "ThreadLocalUsage (may cause memory leak in pooled threads)";
-                    }
                 }
 
                 if (shouldReport) {
@@ -465,16 +460,6 @@ public class ParsingUtil {
                         allIssues.add(issue4);
                         break;
 
-                    case "java.lang.ThreadLocal":
-                        IssueInfo issue5 = new IssueInfo();
-                        issue5.severity = "High";
-                        issue5.message = "Uses ThreadLocal → ThreadLocalUse";
-                        issue5.location = loc;
-                        issue5.className = type.getQualifiedName();
-                        issue5.source = loc;
-                        issue5.type = "ThreadLocalUse";
-                        allIssues.add(issue5);
-                        break;
                 }
             } catch (Exception e) {
                 System.err.println("Error detecting constructor problem: " + e.getMessage());
@@ -528,70 +513,6 @@ public class ParsingUtil {
                 allIssues.add(issue);
             }
         });
-
-        String[] distributedFrameworks = {
-            "org.jgroups", "com.hazelcast", "net.sf.ehcache", "org.infinispan",
-            "redis.clients.jedis", "org.apache.ignite", "org.ehcache"
-        };
-
-        for (CtTypeReference<?> dep : type.getReferencedTypes()) {
-            String depName = dep.getQualifiedName();
-            for (String framework : distributedFrameworks) {
-                if (depName.startsWith(framework)) {
-                    IssueInfo issue = new IssueInfo();
-                    issue.severity = "High";
-                    issue.message = "Uses distributed caching framework '" + depName + "' - May cause memory replication across nodes";
-                    issue.location = classLoc;
-                    issue.className = className;
-                    issue.source = "memory_replication";
-                    issue.type = "DistributedCaching";
-                    allIssues.add(issue);
-                    break;
-                }
-            }
-        }
-
-        String[] rmiClasses = {
-            "java.rmi", "javax.rmi", "java.rmi.server", "java.rmi.registry"
-        };
-
-        for (CtTypeReference<?> dep : type.getReferencedTypes()) {
-            String depName = dep.getQualifiedName();
-            for (String rmiClass : rmiClasses) {
-                if (depName.startsWith(rmiClass)) {
-                    IssueInfo issue = new IssueInfo();
-                    issue.severity = "High";
-                    issue.message = "Uses RMI '" + depName + "' - Remote method invocation can cause object serialization/replication";
-                    issue.location = classLoc;
-                    issue.className = className;
-                    issue.source = "memory_replication";
-                    issue.type = "RMI";
-                    allIssues.add(issue);
-                    break;
-                }
-            }
-        }
-
-        String[] jmsClasses = {
-            "javax.jms", "jakarta.jms"
-        };
-
-        for (CtTypeReference<?> dep : type.getReferencedTypes()) {
-            String depName = dep.getQualifiedName();
-            for (String jmsClass : jmsClasses) {
-                if (depName.startsWith(jmsClass)) {
-                    IssueInfo issue = new IssueInfo();
-                    issue.severity = "Medium";
-                    issue.message = "Uses JMS '" + depName + "' - Message passing may involve object serialization";
-                    issue.location = classLoc;
-                    issue.className = className;
-                    issue.source = "memory_replication";
-                    issue.type = "JMS";
-                    allIssues.add(issue);
-                    break;
-                }
-            }
-        }
     }
 
 

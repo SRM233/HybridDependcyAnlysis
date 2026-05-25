@@ -360,11 +360,7 @@ public class ParsingUtil {
                         issueType = "FileSystemDependency (from JSP generated code)";
                     }
                 } else {
-                    if ("getenv(java.lang.String)".equals(signature)) {
-                        shouldReport = true;
-                        issueType = "PortabilityRisk";
-
-                    } else if ("exit(int)".equals(signature) && "java.lang.System".equals(declaringTypeName)) {
+                    if ("exit(int)".equals(signature) && "java.lang.System".equals(declaringTypeName)) {
                         shouldReport = true;
                         issueType = "AbruptTermination";
 

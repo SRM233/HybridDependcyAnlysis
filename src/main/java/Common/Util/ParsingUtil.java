@@ -228,9 +228,8 @@ public class ParsingUtil {
             javaClassInfo.setMethods(null);
         }
 
-        // Run three problem checks: constructor call, memory copy, and call chain.
+        // Run two problem checks: invocation and constructor detection
         detectConstructorIssues(type, classDeps);
-        detectMemoryReplicationIssues(type, classDeps);
 
 
         List<String> importList = new ArrayList<>();
@@ -463,54 +462,6 @@ public class ParsingUtil {
                 }
             } catch (Exception e) {
                 System.err.println("Error detecting constructor problem: " + e.getMessage());
-            }
-        });
-    }
-
-    public void detectMemoryReplicationIssues(CtType<?> type, Set<String> classDeps) throws IOException {
-        String className = type.getQualifiedName();
-        String classLoc = className;
-
-        //Extract implements interface
-        for (CtTypeReference<?> interfaceRef : type.getSuperInterfaces()) {
-            String interfaceName = interfaceRef.getQualifiedName();
-            if (interfaceName.equals("java.io.Serializable")) {
-                IssueInfo issue = new IssueInfo();
-                issue.severity = "Medium";
-                issue.message = "Implements Serializable - Object serialization may cause memory replication";
-                issue.location = classLoc;
-                issue.className = className;
-                issue.source = "memory_replication";
-                issue.type = "Serializable";
-                allIssues.add(issue);
-                break;
-            }
-            else if (interfaceName.equals("java.lang.Cloneable")) {
-                IssueInfo issue = new IssueInfo();
-                issue.severity = "Medium";
-                issue.message = "Implements Cloneable - Object cloning may cause memory replication";
-                issue.location = classLoc;
-                issue.className = className;
-                issue.source = "memory_replication";
-                issue.type = "Cloneable";
-                allIssues.add(issue);
-                break;
-            }
-        }
-
-        type.filterChildren(new TypeFilter<>(CtInvocation.class)).forEach(inv -> {
-            CtInvocation<?> invocation = (CtInvocation<?>) inv;
-            CtExecutableReference<?> execRef = invocation.getExecutable();
-            if (execRef != null && execRef.getSignature().contains("java.nio.channels.FileChannel.map") && "map".equals(execRef.getSimpleName())) {
-                int line = invocation.getPosition() != null ? invocation.getPosition().getLine() : 0;
-                IssueInfo issue = new IssueInfo();
-                issue.severity = "High";
-                issue.message = "Uses FileChannel.map() - Memory-mapped files can cause memory replication";
-                issue.location = className + ":" + line;
-                issue.className = className;
-                issue.source = "memory_replication";
-                issue.type = "MemoryMappedFile";
-                allIssues.add(issue);
             }
         });
     }

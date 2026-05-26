@@ -298,8 +298,6 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         Path outputRoot = jsonFile.toPath().getParent();
         File reportFile = outputRoot.resolve("annotation-statistics.json").toFile();
 
-
-
         Map<String, Object> report = new LinkedHashMap<>();
         report.put("totalClasses", classes.size());
         report.put("annotationCount", countMap);
@@ -1133,14 +1131,21 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         int totalCustomTags = 0;
         List<String> allNamespaces = new ArrayList<>();
         List<String> allCustomTaglibs = new ArrayList<>();
+        List<Map<String, Object>> findings = new ArrayList<>();
 
-        // Aggregate JSP file statistics: code blocks / EL / scriptlets / taglibs
         for (Map<String, Object> jsp : jspClasses) {
-            totalJavaCodeBlocks += ((Number) jsp.getOrDefault("javaCodeBlockCount", 0)).intValue();
-            totalElExpressions += ((List<?>) jsp.getOrDefault("elExpressions", List.of())).size();
-            totalScriptlets += ((List<?>) jsp.getOrDefault("scriptlets", List.of())).size();
-            totalDeclarations += ((List<?>) jsp.getOrDefault("declarations", List.of())).size();
-            totalDirectives += ((List<?>) jsp.getOrDefault("directives", List.of())).size();
+            String filePath = (String) jsp.getOrDefault("filePath", "unknown");
+            int codeBlocks = ((Number) jsp.getOrDefault("javaCodeBlockCount", 0)).intValue();
+            int elCount = ((List<?>) jsp.getOrDefault("elExpressions", List.of())).size();
+            int scriptletCount = ((List<?>) jsp.getOrDefault("scriptlets", List.of())).size();
+            int declCount = ((List<?>) jsp.getOrDefault("declarations", List.of())).size();
+            int directiveCount = ((List<?>) jsp.getOrDefault("directives", List.of())).size();
+
+            totalJavaCodeBlocks += codeBlocks;
+            totalElExpressions += elCount;
+            totalScriptlets += scriptletCount;
+            totalDeclarations += declCount;
+            totalDirectives += directiveCount;
             @SuppressWarnings("unchecked")
             List<String> namespaces = (List<String>) jsp.getOrDefault("namespaces", List.of());
             @SuppressWarnings("unchecked")
@@ -1148,6 +1153,16 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             allNamespaces.addAll(namespaces);
             allCustomTaglibs.addAll(customTaglibs);
             totalCustomTags += customTaglibs.size();
+
+            Map<String, Object> f = new LinkedHashMap<>();
+            f.put("filePath", filePath);
+            f.put("scriptletCount", scriptletCount);
+            f.put("elExpressionCount", elCount);
+            f.put("declarationCount", declCount);
+            f.put("directiveCount", directiveCount);
+            f.put("javaCodeBlockCount", codeBlocks);
+            f.put("customTaglibs", customTaglibs);
+            findings.add(f);
         }
 
         // Deduplicate namespaces and taglibs
@@ -1186,6 +1201,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         report.put("totalCustomTaglibs", totalCustomTags);
         report.put("uniqueNamespaces", uniqueNamespaces);
         report.put("uniqueCustomTaglibs", uniqueCustomTaglibs);
+        report.put("findings", findings);
         report.put("suggestions", suggestions);
         report.put("totalSuggestions", suggestions.size());
         report.put("analysisTime", LocalDateTime.now().toString());
@@ -1255,20 +1271,50 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         List<String> allNamespaces = new ArrayList<>();
         List<String> allBeans = new ArrayList<>();
         List<String> allHardcodedPaths = new ArrayList<>();
+        List<Map<String, Object>> findings = new ArrayList<>();
 
-        // Aggregate JSF file statistics: components / EL / hardcoded paths / Beans / Session access
+        // Compute project root prefix for relative paths
+        File outDir = jsfJsonFile.getParentFile();
+        String rootPrefix = outDir != null ? outDir.getParentFile().getAbsolutePath().replace("\\", "/") + "/" : null;
+
         for (Map<String, Object> jsf : jsfFiles) {
-            totalComponents += ((Number) jsf.getOrDefault("componentCount", 0)).intValue();
-            totalElExpressions += ((List<?>) jsf.getOrDefault("elExpressions", List.of())).size();
-            totalHardcodedPaths += ((List<?>) jsf.getOrDefault("hardcodedPaths", List.of())).size();
-            totalBeans += ((List<?>) jsf.getOrDefault("beans", List.of())).size();
+            String filePath = (String) jsf.getOrDefault("filePath", "unknown");
+            filePath = filePath.replace("\\", "/");
+            if (rootPrefix != null && filePath.startsWith(rootPrefix)) {
+                filePath = filePath.substring(rootPrefix.length());
+            }
+            int compCount = ((Number) jsf.getOrDefault("componentCount", 0)).intValue();
+            int elCount = ((List<?>) jsf.getOrDefault("elExpressions", List.of())).size();
+            int hcCount = ((List<?>) jsf.getOrDefault("hardcodedPaths", List.of())).size();
+            int beanCount = ((List<?>) jsf.getOrDefault("beans", List.of())).size();
             int depth = ((Number) jsf.getOrDefault("maxComponentDepth", 0)).intValue();
+            boolean isTransient = Boolean.TRUE.equals(jsf.getOrDefault("isTransientView", false));
+            boolean hasSession = Boolean.TRUE.equals(jsf.getOrDefault("hasSessionAccess", false));
+            boolean hasFacesCtx = Boolean.TRUE.equals(jsf.getOrDefault("hasFacesContextAccess", false));
+            boolean hasAppCtx = Boolean.TRUE.equals(jsf.getOrDefault("hasApplicationAccess", false));
+
+            totalComponents += compCount;
+            totalElExpressions += elCount;
+            totalHardcodedPaths += hcCount;
+            totalBeans += beanCount;
             if (depth > maxComponentDepth) maxComponentDepth = depth;
-            // Page state API access detection
-            if (Boolean.TRUE.equals(jsf.getOrDefault("isTransientView", false))) transientsViews++;
-            if (Boolean.TRUE.equals(jsf.getOrDefault("hasSessionAccess", false))) sessionAccessCount++;
-            if (Boolean.TRUE.equals(jsf.getOrDefault("hasFacesContextAccess", false))) facesContextAccessCount++;
-            if (Boolean.TRUE.equals(jsf.getOrDefault("hasApplicationAccess", false))) applicationAccessCount++;
+            if (isTransient) transientsViews++;
+            if (hasSession) sessionAccessCount++;
+            if (hasFacesCtx) facesContextAccessCount++;
+            if (hasAppCtx) applicationAccessCount++;
+
+            Map<String, Object> f = new LinkedHashMap<>();
+            f.put("filePath", filePath);
+            f.put("componentCount", compCount);
+            f.put("elExpressionCount", elCount);
+            f.put("hardcodedPathCount", hcCount);
+            f.put("beanCount", beanCount);
+            f.put("maxDepth", depth);
+            f.put("isTransientView", isTransient);
+            f.put("hasSessionAccess", hasSession);
+            f.put("hasFacesContextAccess", hasFacesCtx);
+            f.put("hasApplicationAccess", hasAppCtx);
+            findings.add(f);
 
             @SuppressWarnings("unchecked")
             List<String> namespaces = (List<String>) jsf.getOrDefault("namespaces", List.of());
@@ -1324,6 +1370,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         report.put("uniqueNamespaces", uniqueNamespaces);
         report.put("uniqueBeans", uniqueBeans);
         report.put("hardcodedPaths", allHardcodedPaths);
+        report.put("findings", findings);
         report.put("suggestions", suggestions);
         report.put("totalSuggestions", suggestions.size());
         report.put("analysisTime", LocalDateTime.now().toString());

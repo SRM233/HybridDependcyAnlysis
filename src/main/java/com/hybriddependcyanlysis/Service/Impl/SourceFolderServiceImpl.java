@@ -48,9 +48,11 @@ public class SourceFolderServiceImpl implements SourceFolderService {
         try {
             SourceFolderDAO sourceFolderDAO = new SourceFolderDAO();
 
-            // Create a unique folder for this upload
-            String uniqueFolderName = userFolderDTO.getFile().getOriginalFilename()
-                    .replaceAll("\\.zip$", "") + "_" + System.currentTimeMillis();
+            // Create a unique folder for this upload using userId, username, filename and timestamp
+            String username = UserContextHolder.getUsername();
+            String cleanName = userFolderDTO.getFile().getOriginalFilename()
+                    .replaceAll("\\.zip$", "").replaceAll("[^a-zA-Z0-9._-]", "_");
+            String uniqueFolderName = userId + "_" + username + "_" + cleanName + "_";
 
             Path storageDir = Paths.get("E:/FYP/ProgramStorage", uniqueFolderName);
             Files.createDirectories(storageDir);

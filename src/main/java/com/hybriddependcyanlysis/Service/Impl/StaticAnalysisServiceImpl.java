@@ -658,7 +658,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         }
 
         Map<String, Object> analysis = new LinkedHashMap<>();
-        List<String> migrationSuggestions = new ArrayList<>();
+        Set<String> migrationSuggestions = new LinkedHashSet<>();
 
         int totalUnits = 0;
         int jndiCount = 0;
@@ -716,7 +716,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         analysis.put("totalPersistenceUnits", totalUnits);
         analysis.put("jndiDataSourceCount", jndiCount);
         analysis.put("hardcodedDbConfigCount", hardcodedDbCount);
-        analysis.put("migrationSuggestions", migrationSuggestions);
+        analysis.put("migrationSuggestions", new ArrayList<>(migrationSuggestions));
         analysis.put("totalSuggestions", migrationSuggestions.size());
 
         Path reportPath = persistenceJsonFile.toPath().getParent();
@@ -1400,13 +1400,10 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         return report;
     }
 
-    private void checkJsonFile(File file)
-    {
-
+    private void checkJsonFile(File file) {
         if (!file.exists()) {
-            throw new RuntimeException("File does not exist: " + file.getAbsolutePath());
+            throw new RuntimeException("Parse output not found. Please run Analysis on Source Folders page first.");
         }
-
         if (file.length() == 0) {
             throw new RuntimeException("File is empty (0 bytes): " + file);
         }

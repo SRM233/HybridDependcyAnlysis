@@ -78,56 +78,48 @@ public class StaticAnalysisController {
         }
         userDTO.setId(userId);
         log.info("FileStoreAnalysis:{}", userDTO);
-        Object report = staticAnalysisService.FileStoreAnalysis(userDTO);
-        return Result.success(report);
+        try { Object report = staticAnalysisService.FileStoreAnalysis(userDTO); return Result.success(report); }
+        catch (RuntimeException e) { return Result.fail(e.getMessage()); }
     }
 
     @PostMapping("/persistenceAnalysis")
     public Result persistenceAnalysis(@RequestBody UserDTO userDTO) throws Exception {
         Integer userId = UserContextHolder.getUserId();
-        if (userId == null) {
-            return Result.fail("User not authenticated");
-        }
+        if (userId == null) { return Result.fail("User not authenticated"); }
         userDTO.setId(userId);
         log.info("persistenceAnalysis:{}", userDTO);
-        Object report = staticAnalysisService.persistenceAnalysis(userDTO);
-        return Result.success(report);
+        try { Object report = staticAnalysisService.persistenceAnalysis(userDTO); return Result.success(report); }
+        catch (RuntimeException e) { return Result.fail(e.getMessage()); }
     }
 
     @PostMapping("/ejbJarAnalysis")
     public Result ejbJarAnalysis(@RequestBody UserDTO userDTO) throws Exception {
         Integer userId = UserContextHolder.getUserId();
-        if (userId == null) {
-            return Result.fail("User not authenticated");
-        }
+        if (userId == null) { return Result.fail("User not authenticated"); }
         userDTO.setId(userId);
         log.info("ejbJarAnalysis:{}", userDTO);
-        Object report = staticAnalysisService.ejbJarAnalysis(userDTO);
-        return Result.success(report);
+        try { Object report = staticAnalysisService.ejbJarAnalysis(userDTO); return Result.success(report); }
+        catch (RuntimeException e) { return Result.fail(e.getMessage()); }
     }
 
     @PostMapping("/pomXmlAnalysis")
     public Result pomXmlAnalysis(@RequestBody UserDTO userDTO) throws Exception {
         Integer userId = UserContextHolder.getUserId();
-        if (userId == null) {
-            return Result.fail("User not authenticated");
-        }
+        if (userId == null) { return Result.fail("User not authenticated"); }
         userDTO.setId(userId);
         log.info("pomXmlAnalysis:{}", userDTO);
-        Object report = staticAnalysisService.pomXmlAnalysis(userDTO);
-        return Result.success(report);
+        try { Object report = staticAnalysisService.pomXmlAnalysis(userDTO); return Result.success(report); }
+        catch (RuntimeException e) { return Result.fail(e.getMessage()); }
     }
 
     @PostMapping("/facesXmlAnalysis")
     public Result facesXmlAnalysis(@RequestBody UserDTO userDTO) throws Exception {
         Integer userId = UserContextHolder.getUserId();
-        if (userId == null) {
-            return Result.fail("User not authenticated");
-        }
+        if (userId == null) { return Result.fail("User not authenticated"); }
         userDTO.setId(userId);
         log.info("facesXmlAnalysis:{}", userDTO);
-        Object report = staticAnalysisService.facesXmlAnalysis(userDTO);
-        return Result.success(report);
+        try { Object report = staticAnalysisService.facesXmlAnalysis(userDTO); return Result.success(report); }
+        catch (RuntimeException e) { return Result.fail(e.getMessage()); }
     }
 
     @DeleteMapping("/deleteAnnotationAnalysis")

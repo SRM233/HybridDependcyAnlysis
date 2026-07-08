@@ -86,6 +86,8 @@ public class ParsingUtil {
     }
 
     public void parsingJsp(File outputLog, File errorLog, SourceFolderDAO sourceFolderDAO) throws IOException {
+        jspInfos.clear();
+
         Path root = Paths.get(sourceFolderDAO.getDirPath());
         if (!Files.exists(root) || !Files.isDirectory(root)) {
             System.out.println("Project directory does not exist, skipping JSP parsing");
@@ -955,6 +957,8 @@ public class ParsingUtil {
     }
 
     public void parsingJsf(File jsfFilesParseOutput, SourceFolderDAO sourceFolderDAO) throws IOException {
+        jsfFiles.clear();
+
         Path root = Paths.get(sourceFolderDAO.getDirPath());
         if (!Files.exists(root) || !Files.isDirectory(root)) return;
 
@@ -992,41 +996,6 @@ public class ParsingUtil {
             for (IssueInfo issue : detected) {
                 analysisResult.getIssues().add(issue);
                 allIssues.add(issue);
-            }
-        }
-
-        // Cross-reference PhaseListener and ViewHandler from faces-config.xml
-        List<XmlFileInfo> facesConfigs = analysisResult.getXmlConfigs().get("faces-config.xml");
-        if (facesConfigs != null) {
-            for (XmlFileInfo fc : facesConfigs) {
-                Map<String, Object> data = fc.data;
-                if (data == null) continue;
-
-                List<String> phaseListeners = (List<String>) data.getOrDefault("phaseListeners", List.of());
-                for (String pl : phaseListeners) {
-                    IssueInfo issue = new IssueInfo();
-                    issue.setSeverity("High");
-                    issue.setMessage("Custom PhaseListener detected: " + pl + " — tightly coupled to JSF request lifecycle, prevents stateless cloud migration");
-                    issue.setLocation(fc.getFilePath());
-                    issue.setClassName(pl);
-                    issue.setSource("jsf");
-                    issue.setType("StatefulSession");
-                    analysisResult.getIssues().add(issue);
-                    allIssues.add(issue);
-                }
-
-                List<String> viewHandlers = (List<String>) data.getOrDefault("viewHandlers", List.of());
-                for (String vh : viewHandlers) {
-                    IssueInfo issue = new IssueInfo();
-                    issue.setSeverity("High");
-                    issue.setMessage("Custom ViewHandler detected: " + vh + " — tightly coupled to JSF rendering lifecycle, requires refactoring for cloud-native frontend");
-                    issue.setLocation(fc.getFilePath());
-                    issue.setClassName(vh);
-                    issue.setSource("jsf");
-                    issue.setType("StatefulSession");
-                    analysisResult.getIssues().add(issue);
-                    allIssues.add(issue);
-                }
             }
         }
 
@@ -1342,8 +1311,6 @@ public class ParsingUtil {
 
             xmlFileInfos.add(xmlFileInfo);
         }
-
-        analysisResult.getXmlConfigs().computeIfAbsent(xmlType, k -> new ArrayList<>()).addAll(xmlFileInfos);
 
         File parentDir = outputFile.getParentFile();
         if (parentDir != null && !parentDir.exists()) {

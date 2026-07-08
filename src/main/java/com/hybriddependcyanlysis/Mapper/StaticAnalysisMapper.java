@@ -2,6 +2,7 @@ package com.hybriddependcyanlysis.Mapper;
 
 import com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface StaticAnalysisMapper {
@@ -31,21 +32,21 @@ public interface StaticAnalysisMapper {
 
     void updateResult(AnalysisReportDAO analysisReportDAO);
 
-    void deleteAnnotationAnalysisResult(Integer userId, Integer sourceFolderId);
+    void deleteAnnotationAnalysisResult(@Param("userId") Integer userId, @Param("sourceFolderId") Integer sourceFolderId);
 
-    void deleteWebXmlAnalysisResult(Integer userId, Integer sourceFolderId);
+    void deleteWebXmlAnalysisResult(@Param("userId") Integer userId, @Param("sourceFolderId") Integer sourceFolderId);
 
-    void deleteFileStoreAnalysisResult(Integer userId, Integer sourceFolderId);
+    void deleteFileStoreAnalysisResult(@Param("userId") Integer userId, @Param("sourceFolderId") Integer sourceFolderId);
 
-    void deletePersistenceAnalysisResult(Integer userId, Integer sourceFolderId);
+    void deletePersistenceAnalysisResult(@Param("userId") Integer userId, @Param("sourceFolderId") Integer sourceFolderId);
 
-    void deleteEjbJarAnalysisResult(Integer userId, Integer sourceFolderId);
+    void deleteEjbJarAnalysisResult(@Param("userId") Integer userId, @Param("sourceFolderId") Integer sourceFolderId);
 
-    void deletePomXmlAnalysisResult(Integer userId, Integer sourceFolderId);
+    void deletePomXmlAnalysisResult(@Param("userId") Integer userId, @Param("sourceFolderId") Integer sourceFolderId);
 
-    void deleteFacesConfigAnalysisResult(Integer userId, Integer sourceFolderId);
+    void deleteFacesConfigAnalysisResult(@Param("userId") Integer userId, @Param("sourceFolderId") Integer sourceFolderId);
 
-    void deleteJspContentAnalysisResult(Integer userId, Integer sourceFolderId);
-    void deleteJsfContentAnalysisResult(Integer userId, Integer sourceFolderId);
+    void deleteJspContentAnalysisResult(@Param("userId") Integer userId, @Param("sourceFolderId") Integer sourceFolderId);
+    void deleteJsfContentAnalysisResult(@Param("userId") Integer userId, @Param("sourceFolderId") Integer sourceFolderId);
 
 }

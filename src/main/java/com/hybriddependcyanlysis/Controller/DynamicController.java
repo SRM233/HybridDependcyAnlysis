@@ -20,24 +20,24 @@ public class DynamicController {
     private DynamicAnalysisService dynamicAnalysisService;
 
     @PostMapping()
-    public Result dynamicAnalysis() throws IOException {
+    public Result dynamicAnalysis(Integer sourceFolderId) throws IOException {
         Integer userId = UserContextHolder.getUserId();
         if (userId == null) {
             return Result.fail("User not authenticated");
         }
-        log.info("user Id: {}", userId);
+        log.info("dynamic analysis for sourceFolderId: {}", sourceFolderId);
 
-        dynamicAnalysisService.jarPack(userId);
+        dynamicAnalysisService.jarPack(sourceFolderId);
 
         return Result.success();
     }
 
     @PostMapping("/javaAgent")
-    public Result javaAgent()
+    public Result javaAgent(Integer sourceFolderId)
     {
-        log.info("Java Agent Execute");
+        log.info("Java Agent Execute for sourceFolderId: {}", sourceFolderId);
 
-        dynamicAnalysisService.javaAgent();
+        dynamicAnalysisService.javaAgent(sourceFolderId);
 
         return Result.success();
     }

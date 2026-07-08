@@ -5,7 +5,7 @@ import com.hybriddependcyanlysis.POJO.DTO.AnalysisResultDTO;
 import com.hybriddependcyanlysis.Service.AnalysisReportService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,38 +31,58 @@ public class AnalysisReportController {
         return Result.success(result);
     }
 
-    @GetMapping("/AnnotationReport")
+    @PostMapping("/AnnotationReport")
     public Result<Object> getAnnotationReport(@RequestBody AnalysisResultDTO analysisResultDTO) {
         return wrapReport(analysisReportService.getAnnotationReport(analysisResultDTO));
     }
 
-    @GetMapping("/WebXmlReport")
+    @PostMapping("/WebXmlReport")
     public Result<Object> getWebXmlReport(@RequestBody AnalysisResultDTO analysisResultDTO) {
         return wrapReport(analysisReportService.getWebXmlReport(analysisResultDTO));
     }
 
-    @GetMapping("/FileStoreReport")
+    @PostMapping("/FileStoreReport")
     public Result<Object> getFileStoreReport(@RequestBody AnalysisResultDTO analysisResultDTO) {
         return wrapReport(analysisReportService.getFileStoreReport(analysisResultDTO));
     }
 
-    @GetMapping("/PersistenceReport")
+    @PostMapping("/PersistenceReport")
     public Result<Object> getPersistenceReport(@RequestBody AnalysisResultDTO analysisResultDTO) {
         return wrapReport(analysisReportService.getPersistenceReport(analysisResultDTO));
     }
 
-    @GetMapping("/EjbJarReport")
+    @PostMapping("/EjbJarReport")
     public Result<Object> getEjbJarReport(@RequestBody AnalysisResultDTO analysisResultDTO) {
         return wrapReport(analysisReportService.getEjbJarReport(analysisResultDTO));
     }
 
-    @GetMapping("/PomXmlReport")
+    @PostMapping("/PomXmlReport")
     public Result<Object> getPomXmlReport(@RequestBody AnalysisResultDTO analysisResultDTO) {
         return wrapReport(analysisReportService.getPomXmlReport(analysisResultDTO));
     }
 
-    @GetMapping("/FacesConfigReport")
+    @PostMapping("/FacesConfigReport")
     public Result<Object> getFacesConfigReport(@RequestBody AnalysisResultDTO analysisResultDTO) {
         return wrapReport(analysisReportService.getFacesConfigReport(analysisResultDTO));
+    }
+
+    @PostMapping("/JspContentReport")
+    public Result<Object> getJspContentReport(@RequestBody AnalysisResultDTO analysisResultDTO) {
+        return wrapReport(analysisReportService.getJspContentReport(analysisResultDTO));
+    }
+
+    @PostMapping("/JsfContentReport")
+    public Result<Object> getJsfContentReport(@RequestBody AnalysisResultDTO analysisResultDTO) {
+        return wrapReport(analysisReportService.getJsfContentReport(analysisResultDTO));
+    }
+
+    @PostMapping("/JspFileCountReport")
+    public Result<Object> getJspFileCountReport(@RequestBody AnalysisResultDTO analysisResultDTO) {
+        return wrapReport(analysisReportService.getJspFileCountReport(analysisResultDTO));
+    }
+
+    @PostMapping("/JsfFileCountReport")
+    public Result<Object> getJsfFileCountReport(@RequestBody AnalysisResultDTO analysisResultDTO) {
+        return wrapReport(analysisReportService.getJsfFileCountReport(analysisResultDTO));
     }
 }

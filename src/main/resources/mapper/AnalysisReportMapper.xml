@@ -9,7 +9,7 @@
         VALUES (#{name}, #{createTime},#{updateTime},#{userId},#{sourceFolderId},#{parseOutputId}, #{path})
     </insert>
     <update id="updateResult">
-        update analysis_results
+        update analysis_report
         <set>
             <if test="name != null and name != ''">
                 name = #{name},
@@ -37,7 +37,7 @@
     </update>
 
     <select id="getAnalysisResultReport" resultType="com.hybriddependcyanlysis.POJO.DAO.AnalysisReportDAO">
-        SELECT * FROM analysis_results
+        SELECT * FROM analysis_report
         <where>
             <if test="id != null">
                 AND id = #{id}

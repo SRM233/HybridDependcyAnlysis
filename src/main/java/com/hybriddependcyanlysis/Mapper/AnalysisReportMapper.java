@@ -33,4 +33,16 @@ public interface AnalysisReportMapper {
 
     @Select("select * from analysis_report where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'faces-config-analysis'")
     AnalysisReportDAO getFacesConfigReport(AnalysisResultDTO analysisResultDTO);
+
+    @Select("select * from analysis_report where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'jsp-content-analysis'")
+    AnalysisReportDAO getJspContentReport(AnalysisResultDTO analysisResultDTO);
+
+    @Select("select * from analysis_report where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'jsf-content-analysis'")
+    AnalysisReportDAO getJsfContentReport(AnalysisResultDTO analysisResultDTO);
+
+    @Select("select * from analysis_report where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'jsp-file-count'")
+    AnalysisReportDAO getJspFileCountReport(AnalysisResultDTO analysisResultDTO);
+
+    @Select("select * from analysis_report where user_id = #{userId} and source_folder_id = #{sourceFolderId} and parse_output_id = #{parseOutputId} and name = 'jsf-file-count'")
+    AnalysisReportDAO getJsfFileCountReport(AnalysisResultDTO analysisResultDTO);
 }

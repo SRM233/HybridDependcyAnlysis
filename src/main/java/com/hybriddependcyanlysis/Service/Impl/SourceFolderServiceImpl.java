@@ -11,6 +11,7 @@ import com.hybriddependcyanlysis.POJO.DAO.SourceFolderDAO;
 import com.hybriddependcyanlysis.POJO.DTO.UserFolderDTO;
 import com.hybriddependcyanlysis.Service.SourceFolderService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,9 @@ import java.util.zip.ZipInputStream;
 
 @Service
 public class SourceFolderServiceImpl implements SourceFolderService {
+
+    @Value("${storage.program-storage-path:../ProgramStorage}")
+    private String programStoragePath;
 
     @Autowired
     private IngestMapper ingestMapper;
@@ -54,7 +58,11 @@ public class SourceFolderServiceImpl implements SourceFolderService {
                     .replaceAll("\\.zip$", "").replaceAll("[^a-zA-Z0-9._-]", "_");
             String uniqueFolderName = userId + "_" + username + "_" + cleanName + "_";
 
-            Path storageDir = Paths.get("E:/FYP/ProgramStorage", uniqueFolderName);
+            Path storageRoot = Paths.get(programStoragePath).toAbsolutePath().normalize();
+            if (!Files.exists(storageRoot)) {
+                Files.createDirectories(storageRoot);
+            }
+            Path storageDir = storageRoot.resolve(uniqueFolderName);
             Files.createDirectories(storageDir);
 
             // Copy uploaded file into that folder

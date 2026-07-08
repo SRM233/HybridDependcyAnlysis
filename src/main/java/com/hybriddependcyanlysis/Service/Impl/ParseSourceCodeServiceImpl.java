@@ -455,7 +455,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
             BeanUtils.copyProperties(jspParseOutPutDAO, jspParseErrorDAO);
             jspParseErrorDAO.setJspParseOutPutId(jspParseOutPutDAO.getId());
             jspParseErrorDAO.setName(OutputFileName.JSP_PARSE_ERROR_FILE_NAME);
-            jspParseErrorDAO.setPath(sourceFolderDAO.getDirPath() + "\\" + OutputPath.OUTPUT_BASE_DIR + "\\" + OutputPath.JSP_PARSE_ERROR_LOG_PATH);
+            jspParseErrorDAO.setPath(Paths.get(sourceFolderDAO.getDirPath(), OutputPath.OUTPUT_BASE_DIR, OutputPath.JSP_PARSE_ERROR_LOG_PATH).toString());
             parseSourceCodeMapper.insertJspParseError(jspParseErrorDAO);
         }
 
@@ -495,7 +495,7 @@ public class ParseSourceCodeServiceImpl implements ParseSourceCodeService {
             BeanUtils.copyProperties(javaFilesParseDAO, javaFilesErrorDAO);
             javaFilesErrorDAO.setOutputId(javaFilesParseDAO.getId());
             javaFilesErrorDAO.setName(OutputFileName.JAVA_FILE_ERROR_FILE_NAME);
-            javaFilesErrorDAO.setPath(sourceFolderDAO.getDirPath() +  "\\" +OutputPath.OUTPUT_BASE_DIR + "\\" +OutputPath.JAVA_PARSE_ERROR_LOG_PATH);
+            javaFilesErrorDAO.setPath(Paths.get(sourceFolderDAO.getDirPath(), OutputPath.OUTPUT_BASE_DIR, OutputPath.JAVA_PARSE_ERROR_LOG_PATH).toString());
             parseSourceCodeMapper.insertJavaFilesError(javaFilesErrorDAO);
         }
 

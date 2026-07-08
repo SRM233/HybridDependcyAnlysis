@@ -13,7 +13,6 @@ import com.hybriddependcyanlysis.POJO.AnalysisResultReport;
 import com.hybriddependcyanlysis.POJO.DAO.SourceFolderDAO;
 import com.hybriddependcyanlysis.Service.JsonFileService;
 
-import org.springframework.transaction.annotation.Transactional;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -1006,7 +1005,6 @@ public class ParsingUtil {
         System.out.println("   Total analyzed: " + paths.size() + " JSF files");
     }
 
-    @Transactional
     public void staticParseFiles(SourceFolderDAO sourceFolderDAO) throws IOException {
         String rootPath = sourceFolderDAO.getDirPath();
         File rootDir = new File(rootPath);

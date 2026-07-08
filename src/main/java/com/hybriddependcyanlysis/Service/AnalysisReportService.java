@@ -17,4 +17,12 @@ public interface AnalysisReportService {
     Object getPomXmlReport(AnalysisResultDTO analysisResultDTO);
 
     Object getFacesConfigReport(AnalysisResultDTO analysisResultDTO);
+
+    Object getJspContentReport(AnalysisResultDTO analysisResultDTO);
+
+    Object getJsfContentReport(AnalysisResultDTO analysisResultDTO);
+
+    Object getJspFileCountReport(AnalysisResultDTO analysisResultDTO);
+
+    Object getJsfFileCountReport(AnalysisResultDTO analysisResultDTO);
 }

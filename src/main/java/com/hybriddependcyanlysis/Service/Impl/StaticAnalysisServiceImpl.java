@@ -222,7 +222,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
     public Object AnnotationCount(UserDTO userDTO) throws IOException {
         Integer userId = UserContextHolder.getUserId();
         if (userId == null) {
-            throw new RemoteException("User not authenticated");
+            throw new RuntimeException("User not authenticated");
         }
         userDTO.setId(userId);
         AnalysisReportDAO analysisResultDTO = new AnalysisReportDAO();
@@ -338,7 +338,13 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
     }
 
     @Override
+    @Transactional
     public Object analyzeWebXml(UserDTO userDTO) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        userDTO.setId(userId);
         WebXmlParseOutputDAO webXmlDao = parseSourceCodeMapper.getWebXmlParseOutputBySourceFolderId(userDTO.getSourceFolderId());
         if (webXmlDao == null) {
             return noDataReport("web.xml");
@@ -353,8 +359,8 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
                 new TypeReference<List<XmlFileInfo>>() {});
 
         if (webDataList.isEmpty()) {
-            System.err.println("⚠️ web.xml JSON is empty: " + outputPath);
-            return Map.of();
+            System.err.println("web.xml JSON is empty: " + outputPath);
+            return noDataReport("web.xml");
         }
 
         XmlFileInfo fileInfo = webDataList.get(0);
@@ -371,7 +377,7 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         analysis.put("analyzedAt", LocalDateTime.now().toString());
 
         // Version check: Servlet 2.x version recommend upgrade
-        String version = (String) data.getOrDefault("version", "unknown");
+        String version = String.valueOf(data.getOrDefault("version", "unknown"));
         boolean metadataComplete = Boolean.parseBoolean(String.valueOf(data.get("metadataComplete")));
         analysis.put("webXmlVersion", version);
         analysis.put("metadataComplete", data.get("metadataComplete"));
@@ -431,9 +437,15 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         @SuppressWarnings("unchecked")
         Map<String, Object> sessionConfig = (Map<String, Object>) data.getOrDefault("sessionConfig", Map.of());
         analysis.put("sessionConfig", sessionConfig);
-        String timeout = (String) sessionConfig.getOrDefault("sessionTimeoutMinutes", "30");
-        if (Integer.parseInt(timeout) > 30) {
-            migrationSuggestions.add("♻️ session-timeout = " + timeout + " min -> Must use Redis / Hazelcast / Spring Session distributed session in cloud");
+        Object timeoutObj = sessionConfig.getOrDefault("sessionTimeoutMinutes", "30");
+        int timeout = 30;
+        if (timeoutObj instanceof Number) {
+            timeout = ((Number) timeoutObj).intValue();
+        } else {
+            try { timeout = Integer.parseInt(String.valueOf(timeoutObj)); } catch (NumberFormatException ignored) { }
+        }
+        if (timeout > 30) {
+            migrationSuggestions.add("session-timeout = " + timeout + " min -> Must use Redis / Hazelcast / Spring Session distributed session in cloud");
         }
 
         // Login auth method check: FORM/BASIC recommend migrating to OAuth2
@@ -509,7 +521,13 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
     }
 
     @Override
+    @Transactional
     public Object FileStoreAnalysis(UserDTO userDTO) throws Exception {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        userDTO.setId(userId);
 
         ObjectMapper objectMapper = new ObjectMapper();
 
@@ -639,7 +657,13 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
     }
 
     @Override
+    @Transactional
     public Object persistenceAnalysis(UserDTO userDTO) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        userDTO.setId(userId);
         PersistenceXmlParseOutputDAO persistenceDao = parseSourceCodeMapper.getPersistenceXmlParseOutputBySourceFolderId(userDTO.getSourceFolderId());
         if (persistenceDao == null) {
             return noDataReport("persistence.xml");
@@ -653,8 +677,8 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
                 new TypeReference<List<XmlFileInfo>>() {});
 
         if (persistenceDataList.isEmpty()) {
-            System.err.println("⚠️ persistence.xml JSON is empty: " + outputPath);
-            return Map.of();
+            System.err.println("persistence.xml JSON is empty: " + outputPath);
+            return noDataReport("persistence.xml");
         }
 
         Map<String, Object> analysis = new LinkedHashMap<>();
@@ -747,7 +771,13 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
         return analysis;
     }
     @Override
+    @Transactional
     public Object ejbJarAnalysis(UserDTO userDTO) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        userDTO.setId(userId);
         EjbJarXmlParseOutputDAO ejbDao = parseSourceCodeMapper.getEjbJarXmlParseOutputBySourceFolderId(userDTO.getSourceFolderId());
         if (ejbDao == null) {
             return noDataReport("ejb-jar.xml");
@@ -761,8 +791,8 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
                 new TypeReference<List<XmlFileInfo>>() {});
 
         if (ejbDataList.isEmpty()) {
-            System.err.println("⚠️ ejb-jar.xml JSON is empty: " + outputPath);
-            return Map.of();
+            System.err.println("ejb-jar.xml JSON is empty: " + outputPath);
+            return noDataReport("ejb-jar.xml");
         }
 
         XmlFileInfo fileInfo = ejbDataList.get(0);
@@ -878,7 +908,13 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
     }
 
     @Override
+    @Transactional
     public Object pomXmlAnalysis(UserDTO userDTO) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        userDTO.setId(userId);
         ObjectMapper objectMapper = new ObjectMapper();
 
         PomXmlParseOutputDAO pomDao = parseSourceCodeMapper.getPomXmlParseOutputBySourceFolderId(userDTO.getSourceFolderId());
@@ -921,8 +957,11 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
             // Collect javaVersion and check for low version
             String javaVersion = (String) data.getOrDefault("javaVersion", "unknown");
             allJavaVersions.add(javaVersion);
-            if (!javaVersion.equals("unknown") && Integer.parseInt(javaVersion) < 11) {
-                hasLowJavaVersion = true;
+            if (!javaVersion.equals("unknown")) {
+                try {
+                    int major = Integer.parseInt(javaVersion.replaceAll("[^0-9].*", ""));
+                    if (major < 11) hasLowJavaVersion = true;
+                } catch (NumberFormatException ignored) { }
             }
 
             // Collect dependencies and check for legacy app server dependencies
@@ -995,7 +1034,13 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
     }
 
     @Override
+    @Transactional
     public Object facesXmlAnalysis(UserDTO userDTO) throws IOException {
+        Integer userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        userDTO.setId(userId);
         ObjectMapper objectMapper = new ObjectMapper();
         FacesConfigXmlParseOutputDAO facesDao = parseSourceCodeMapper.getFacesConfigXmlParseOutputBySourceFolderId(userDTO.getSourceFolderId());
         if (facesDao == null) {
@@ -1012,8 +1057,8 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
                 new TypeReference<List<XmlFileInfo>>() {});
 
         if (dataList.isEmpty()) {
-            System.err.println("⚠️ faces-config.xml JSON is empty: " + facesXmlParseOutputPath);
-            return Map.of();
+            System.err.println("faces-config.xml JSON is empty: " + facesXmlParseOutputPath);
+            return noDataReport("faces-config.xml");
         }
 
         Map<String, Object> analysis = new LinkedHashMap<>();
@@ -1135,11 +1180,11 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         for (Map<String, Object> jsp : jspClasses) {
             String filePath = (String) jsp.getOrDefault("filePath", "unknown");
-            int codeBlocks = ((Number) jsp.getOrDefault("javaCodeBlockCount", 0)).intValue();
-            int elCount = ((List<?>) jsp.getOrDefault("elExpressions", List.of())).size();
-            int scriptletCount = ((List<?>) jsp.getOrDefault("scriptlets", List.of())).size();
-            int declCount = ((List<?>) jsp.getOrDefault("declarations", List.of())).size();
-            int directiveCount = ((List<?>) jsp.getOrDefault("directives", List.of())).size();
+            int codeBlocks = (jsp.get("javaCodeBlockCount") instanceof Number n) ? n.intValue() : 0;
+            int elCount = (jsp.get("elExpressions") instanceof List<?> l) ? l.size() : 0;
+            int scriptletCount = (jsp.get("scriptlets") instanceof List<?> l) ? l.size() : 0;
+            int declCount = (jsp.get("declarations") instanceof List<?> l) ? l.size() : 0;
+            int directiveCount = (jsp.get("directives") instanceof List<?> l) ? l.size() : 0;
 
             totalJavaCodeBlocks += codeBlocks;
             totalElExpressions += elCount;
@@ -1275,7 +1320,8 @@ public class StaticAnalysisServiceImpl implements StaticAnalysisService {
 
         // Compute project root prefix for relative paths
         File outDir = jsfJsonFile.getParentFile();
-        String rootPrefix = outDir != null ? outDir.getParentFile().getAbsolutePath().replace("\\", "/") + "/" : null;
+        File parentDir = outDir != null ? outDir.getParentFile() : null;
+        String rootPrefix = parentDir != null ? parentDir.getAbsolutePath().replace("\\", "/") + "/" : null;
 
         for (Map<String, Object> jsf : jsfFiles) {
             String filePath = (String) jsf.getOrDefault("filePath", "unknown");

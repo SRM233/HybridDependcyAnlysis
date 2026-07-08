@@ -1,6 +1,10 @@
 package com.hybriddependcyanlysis.Service.Impl;
 
+import com.hybriddependcyanlysis.Mapper.IngestMapper;
+import com.hybriddependcyanlysis.POJO.DAO.SourceFolderDAO;
 import com.hybriddependcyanlysis.Service.DynamicAnalysisService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.FileOutputStream;
@@ -14,31 +18,52 @@ import java.util.jar.JarOutputStream;
 
 @Service
 public class DynamicAnalysisServiceImpl implements DynamicAnalysisService {
-    @Override
-    public void jarPack(Integer id) throws IOException {
-        String unpackPath = "E:\\FYP\\ProgramStorage\\glassfish-master_1765590110860\\glassfish-master";
-        // Always create a JAR
-        createJar(unpackPath, "E:/FYP/ProgramStorage/output_" + id + ".jar");
 
-        // If web files exist, also create a WAR
+    @Value("${storage.program-storage-path:../ProgramStorage}")
+    private String programStoragePath;
+
+    @Autowired
+    private IngestMapper ingestMapper;
+
+    private Path getStorageRoot() {
+        Path root = Paths.get(programStoragePath).toAbsolutePath().normalize();
+        if (!Files.exists(root)) {
+            try {
+                Files.createDirectories(root);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+        return root;
+    }
+
+    @Override
+    public void jarPack(Integer sourceFolderId) throws IOException {
+        SourceFolderDAO sourceFolderDAO = ingestMapper.getById(sourceFolderId);
+        if (sourceFolderDAO == null || sourceFolderDAO.getDirPath() == null) {
+            throw new RuntimeException("Source folder not found for id: " + sourceFolderId);
+        }
+        String unpackPath = sourceFolderDAO.getDirPath();
+        Path storageRoot = getStorageRoot();
+        createJar(unpackPath, storageRoot.resolve("output_" + sourceFolderId + ".jar").toString());
+
         boolean hasWebFiles = Files.walk(Paths.get(unpackPath))
                 .anyMatch(p -> p.toString().endsWith(".jsp")
                         || p.toString().endsWith(".jsf")
                         || p.toString().contains("WEB-INF"));
 
         if (hasWebFiles) {
-            createWar(unpackPath, "E:/FYP/ProgramStorage/output_" + id + ".war");
+            createWar(unpackPath, storageRoot.resolve("output_" + sourceFolderId + ".war").toString());
         }
 
-        System.out.println("Packaging complete for ID: " + id);
+        System.out.println("Packaging complete for ID: " + sourceFolderId);
     }
 
     @Override
-    public void javaAgent() {
+    public void javaAgent(Integer sourceFolderId) {
         try {
-            // Paths to your packaged program and agent
-            String agentPath = "E:/FYP/Agent/myAgent.jar";
-            String jarPath   = "E:/FYP/ProgramStorage/output_1.jar"; // or .war if needed
+            String agentPath = Paths.get("").toAbsolutePath().getParent().resolve("Agent/myAgent.jar").normalize().toString();
+            String jarPath   = getStorageRoot().resolve("output_" + sourceFolderId + ".jar").toString();
 
             // Build the command: java -javaagent:agent.jar -jar program.jar
             ProcessBuilder pb = new ProcessBuilder(

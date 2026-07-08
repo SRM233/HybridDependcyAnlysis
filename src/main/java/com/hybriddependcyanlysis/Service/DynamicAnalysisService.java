@@ -3,7 +3,7 @@ package com.hybriddependcyanlysis.Service;
 import java.io.IOException;
 
 public interface DynamicAnalysisService {
-    void jarPack(Integer id) throws IOException;
+    void jarPack(Integer sourceFolderId) throws IOException;
 
-    void javaAgent();
+    void javaAgent(Integer sourceFolderId);
 }

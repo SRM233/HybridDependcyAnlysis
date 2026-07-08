@@ -82,4 +82,24 @@ public class AnalysisReportServiceImpl implements AnalysisReportService {
     public Object getFacesConfigReport(AnalysisResultDTO analysisResultDTO) {
         return getReportByMapperFunction(analysisResultDTO, analysisReportMapper::getFacesConfigReport);
     }
+
+    @Override
+    public Object getJspContentReport(AnalysisResultDTO analysisResultDTO) {
+        return getReportByMapperFunction(analysisResultDTO, analysisReportMapper::getJspContentReport);
+    }
+
+    @Override
+    public Object getJsfContentReport(AnalysisResultDTO analysisResultDTO) {
+        return getReportByMapperFunction(analysisResultDTO, analysisReportMapper::getJsfContentReport);
+    }
+
+    @Override
+    public Object getJspFileCountReport(AnalysisResultDTO analysisResultDTO) {
+        return getReportByMapperFunction(analysisResultDTO, analysisReportMapper::getJspFileCountReport);
+    }
+
+    @Override
+    public Object getJsfFileCountReport(AnalysisResultDTO analysisResultDTO) {
+        return getReportByMapperFunction(analysisResultDTO, analysisReportMapper::getJsfFileCountReport);
+    }
 }
